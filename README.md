@@ -29,8 +29,8 @@ Built with Next.js 16 (App Router), Supabase, and Tailwind v4.
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/jtzack/lowticketlaunchpad-challege.git
-cd lowticketlaunchpad-challege
+git clone https://github.com/jtzack/lowticketlaunchpad-challenge.git
+cd lowticketlaunchpad-challenge
 npm install
 ```
 
@@ -89,7 +89,7 @@ Points and tiers are computed in `lib/points.ts` — no separate columns to main
 
 ## Deploying to Vercel
 
-1. Push to GitHub (already done — repo is `jtzack/lowticketlaunchpad-challege`)
+1. Push to GitHub (already done — repo is `jtzack/lowticketlaunchpad-challenge`)
 2. Import the project into Vercel
 3. Add the same environment variables from `.env.local` in the Vercel dashboard
 4. Set `NEXT_PUBLIC_SITE_URL` to your production domain
