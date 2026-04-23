@@ -48,6 +48,11 @@ export default async function DashboardPage({
   const completedSet = new Set(submissions.map((s) => s.session_id))
   const totalPoints = computeTotalPoints(submissions)
   const streak = computeStreak(submissions)
+  const basePoints = submissions.reduce(
+    (sum, s) => sum + (s.points_awarded || 0),
+    0
+  )
+  const streakBonus = Math.max(0, totalPoints - basePoints)
   const tier = getTier(totalPoints)
   const nextTier = getNextTier(totalPoints)
   const progress = getProgressToNextTier(totalPoints)
@@ -123,6 +128,11 @@ export default async function DashboardPage({
                 ? `${tier.name} \u00b7 ${nextTier.min - totalPoints} to ${nextTier.name}`
                 : `${tier.name} \u00b7 Max tier`}
             </div>
+            {streakBonus > 0 && (
+              <div className="font-sans text-[11px] text-white/40 mt-1">
+                {basePoints} earned \u00b7 +{streakBonus} streak bonus
+              </div>
+            )}
           </div>
         </div>
 
