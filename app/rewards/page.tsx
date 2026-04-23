@@ -244,12 +244,7 @@ function RewardCard({
       )}
 
       {status === 'unlocked' && reward.url && (
-        <>
-          <div className="bg-black border border-white/20 rounded-lg px-3 py-2.5 mb-2.5 break-all font-mono text-[12px] text-blue">
-            {prettyUrl(reward.url)}
-          </div>
-          <ClaimButton rewardId={reward.id} url={reward.url} userId={userId} />
-        </>
+        <ClaimButton rewardId={reward.id} url={reward.url} userId={userId} />
       )}
 
       {status === 'unlocked' && !reward.url && (
@@ -258,16 +253,20 @@ function RewardCard({
         </div>
       )}
 
-      {status === 'claimed' && reward.url && (
+      {status === 'claimed' && (
         <div className="flex items-center justify-between gap-3">
-          <a
-            href={reward.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-mono text-[12px] text-blue hover:text-yellow underline truncate"
-          >
-            {prettyUrl(reward.url)}
-          </a>
+          {reward.url ? (
+            <a
+              href={reward.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 font-sans text-[12px] font-bold text-blue hover:text-yellow uppercase tracking-[0.08em]"
+            >
+              Open reward ↗
+            </a>
+          ) : (
+            <span />
+          )}
           {claimedDate && (
             <span className="font-mono text-[10px] text-white/40 tracking-[0.12em] uppercase whitespace-nowrap">
               CLAIMED {claimedDate.toUpperCase()}
@@ -312,11 +311,3 @@ function StatusPill({ status }: { status: RewardStatus }) {
   )
 }
 
-function prettyUrl(url: string): string {
-  try {
-    const u = new URL(url)
-    return `${u.hostname.replace(/^www\./, '')}${u.pathname === '/' ? '' : u.pathname}`
-  } catch {
-    return url
-  }
-}
