@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { LinkPreview } from '@/components/LinkPreview'
 import { SubmitForm, type SubmissionDraft } from './submit-form'
 
 export function MySubmissionCard({
@@ -50,14 +51,7 @@ export function MySubmissionCard({
         </div>
       </div>
       {submission.proof_type === 'link' && submission.proof_url && (
-        <a
-          href={submission.proof_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-sans text-[14px] text-blue hover:text-yellow underline break-all"
-        >
-          {submission.proof_url}
-        </a>
+        <LinkPreview url={submission.proof_url} />
       )}
       {submission.proof_type === 'text' && submission.proof_text && (
         <p className="font-sans text-[14px] text-white/70 whitespace-pre-wrap leading-relaxed">
