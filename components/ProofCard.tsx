@@ -1,5 +1,6 @@
 import type { Submission } from '@/lib/points'
 import { getSessionById } from '@/lib/sessions'
+import { LinkPreview } from './LinkPreview'
 
 type ProofCardProps = {
   submission: Submission
@@ -54,14 +55,7 @@ export function ProofCard({
       )}
 
       {submission.proof_type === 'link' && submission.proof_url && (
-        <a
-          href={submission.proof_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-sans text-[13px] text-blue hover:text-yellow underline break-all"
-        >
-          {submission.proof_url}
-        </a>
+        <LinkPreview url={submission.proof_url} />
       )}
       {submission.proof_type === 'text' && submission.proof_text && (
         <p className="font-sans text-[13px] text-white/70 leading-relaxed whitespace-pre-wrap line-clamp-6">
