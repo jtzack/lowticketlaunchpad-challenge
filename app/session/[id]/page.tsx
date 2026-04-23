@@ -48,6 +48,24 @@ export default async function SessionPage({
     .order('submitted_at', { ascending: false })
     .limit(20)
 
+  // Like counts + current user's likes across peer submissions
+  const peerIds = (peerSubmissions ?? []).map((p) => p.id)
+  const peerLikeCount = new Map<string, number>()
+  const peerLikedByMe = new Set<string>()
+  if (peerIds.length > 0) {
+    const { data: likesData } = await supabase
+      .from('submission_likes')
+      .select('submission_id, user_id')
+      .in('submission_id', peerIds)
+    for (const l of likesData || []) {
+      peerLikeCount.set(
+        l.submission_id,
+        (peerLikeCount.get(l.submission_id) ?? 0) + 1
+      )
+      if (l.user_id === user.id) peerLikedByMe.add(l.submission_id)
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <BrandHeader />
@@ -126,6 +144,9 @@ export default async function SessionPage({
                     key={sub.id}
                     submission={sub as Submission}
                     studentName={profile?.name || null}
+                    likeCount={peerLikeCount.get(sub.id) ?? 0}
+                    likedByMe={peerLikedByMe.has(sub.id)}
+                    canLike
                   />
                 )
               })}
