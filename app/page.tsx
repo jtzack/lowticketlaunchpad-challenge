@@ -51,7 +51,7 @@ export default function HomePage() {
               </div>
               <div>
                 <span className="text-yellow font-display text-[14px] mr-1.5">
-                  4
+                  6
                 </span>
                 Tier rewards
               </div>
@@ -75,10 +75,10 @@ export default function HomePage() {
                 </div>
                 <div>
                   <div className="font-sans text-[13px] font-semibold text-white">
-                    Maya G. · Cohort 06
+                    Maya G.
                   </div>
                   <div className="font-mono text-[10px] text-white/40 tracking-[0.1em]">
-                    SHIPPED DAY 19 · $4,200 WEEKEND
+                    SHIPPED DAY 9 · $4,200 WEEKEND
                   </div>
                 </div>
               </div>
