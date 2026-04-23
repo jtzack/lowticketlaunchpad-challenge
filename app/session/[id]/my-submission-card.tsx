@@ -7,12 +7,14 @@ import { SubmitForm, type SubmissionDraft } from './submit-form'
 export function MySubmissionCard({
   sessionId,
   userId,
+  dueAt,
   submission,
   pointsAwarded,
   submittedAt,
 }: {
   sessionId: number
   userId: string
+  dueAt: string | null
   submission: SubmissionDraft
   pointsAwarded: number
   submittedAt: string
@@ -24,7 +26,8 @@ export function MySubmissionCard({
       <SubmitForm
         sessionId={sessionId}
         userId={userId}
-        existing={submission}
+        dueAt={dueAt}
+        existing={{ ...submission, submitted_at: submittedAt }}
         onSaved={() => setEditing(false)}
         onCancel={() => setEditing(false)}
       />
