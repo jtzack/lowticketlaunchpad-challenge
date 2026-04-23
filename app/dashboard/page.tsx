@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { BrandHeader } from '@/components/BrandHeader'
 import { SessionCard, type SessionStatus } from '@/components/SessionCard'
-import { TierBadge } from '@/components/TierBadge'
 import { getSessionsFromDb } from '@/lib/sessions'
 import {
   computeStreak,
@@ -105,8 +104,8 @@ export default async function DashboardPage({
       )}
 
       <main className="flex-1 max-w-6xl mx-auto w-full px-5 md:px-8 py-12">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
+        {/* Header: name + single points block */}
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
           <div>
             <p className="font-sans text-[11px] font-bold text-blue uppercase tracking-[0.2em] mb-2">
               Welcome Back
@@ -115,33 +114,21 @@ export default async function DashboardPage({
               {displayName}
             </h1>
           </div>
-          <div className="flex items-center gap-4">
-            <TierBadge points={totalPoints} />
-            <div className="text-right">
-              <div className="font-display text-[36px] text-yellow leading-none">
-                {totalPoints}
-              </div>
-              <div className="font-sans text-[10px] text-white/40 uppercase tracking-wider mt-1">
-                Total Points
-              </div>
+          <div className="text-left md:text-right">
+            <div className="font-display text-[clamp(48px,6vw,72px)] text-yellow leading-none">
+              {totalPoints}
+            </div>
+            <div className="font-sans text-[11px] font-bold text-white/60 uppercase tracking-[0.18em] mt-2">
+              {nextTier
+                ? `${tier.name} \u00b7 ${nextTier.min - totalPoints} to ${nextTier.name}`
+                : `${tier.name} \u00b7 Max tier`}
             </div>
           </div>
         </div>
 
-        {/* Stats grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12">
-          <StatBlock label="Submitted" value={`${submissions.length} / 6`} />
-          <StatBlock label="Streak" value={`${streak}\u00d7`} />
-          <StatBlock label="Current Tier" value={tier.name} />
-          <StatBlock
-            label={nextTier ? `To ${nextTier.name}` : 'Maxed Out'}
-            value={nextTier ? `${nextTier.min - totalPoints} pts` : '\u2728'}
-          />
-        </div>
-
         {/* Tier progress bar */}
         {nextTier && (
-          <div className="mb-12">
+          <div className="mb-10">
             <div className="flex justify-between text-[11px] font-sans uppercase tracking-wider mb-2">
               <span className="text-white/40">{tier.name}</span>
               <span className="text-white/40">{nextTier.name}</span>
@@ -153,11 +140,17 @@ export default async function DashboardPage({
               />
             </div>
             <p className="font-sans text-[12px] text-white/50 mt-2">
-              {nextTier.min - totalPoints} more points to unlock:{' '}
+              Unlock next:{' '}
               <span className="text-yellow">{nextTier.unlock}</span>
             </p>
           </div>
         )}
+
+        {/* Stats \u2014 two meaningful counters */}
+        <div className="grid grid-cols-2 gap-3 mb-12 max-w-md">
+          <StatBlock label="Submitted" value={`${submissions.length} / 6`} />
+          <StatBlock label="Streak" value={`${streak}\u00d7`} />
+        </div>
 
         {/* Pipeline */}
         <div className="mb-10">
