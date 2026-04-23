@@ -5,12 +5,14 @@ type ProofCardProps = {
   submission: Submission
   studentName?: string | null
   showSession?: boolean
+  featured?: boolean
 }
 
 export function ProofCard({
   submission,
   studentName,
   showSession = false,
+  featured = false,
 }: ProofCardProps) {
   const session = getSessionById(submission.session_id)
   const date = new Date(submission.submitted_at).toLocaleDateString('en-US', {
@@ -19,12 +21,23 @@ export function ProofCard({
   })
 
   return (
-    <div className="border border-white/10 rounded-lg p-5 bg-dark/30 hover:border-white/20 transition">
+    <div
+      className={`border rounded-lg p-5 transition ${
+        featured
+          ? 'border-yellow/40 bg-yellow/[0.04] hover:border-yellow/60'
+          : 'border-white/10 bg-dark/30 hover:border-white/20'
+      }`}
+    >
       <div className="flex items-center justify-between mb-3">
-        <span className="font-sans text-[10px] font-bold text-yellow uppercase tracking-wider">
+        <span className="font-sans text-[10px] font-bold text-yellow uppercase tracking-wider flex items-center gap-2">
           {showSession && session
             ? `Session ${session.number}`
             : `Session ${submission.session_id}`}
+          {featured && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-yellow text-black text-[9px] font-bold tracking-[0.1em]">
+              ★ FEATURED
+            </span>
+          )}
         </span>
         <span className="font-sans text-[11px] text-white/30">{date}</span>
       </div>

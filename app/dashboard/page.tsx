@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { BrandHeader } from '@/components/BrandHeader'
 import { SessionCard, type SessionStatus } from '@/components/SessionCard'
 import { TierBadge } from '@/components/TierBadge'
-import { SESSIONS } from '@/lib/sessions'
+import { SESSIONS, getSessionById } from '@/lib/sessions'
 import {
   computeStreak,
   computeTotalPoints,
@@ -12,10 +12,15 @@ import {
   getProgressToNextTier,
   type Submission,
 } from '@/lib/points'
+import { CelebrateModal } from './celebrate-modal'
 
 export const dynamic = 'force-dynamic'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ celebrate?: string; awarded?: string }>
+}) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -45,7 +50,18 @@ export default async function DashboardPage() {
   const tier = getTier(totalPoints)
   const nextTier = getNextTier(totalPoints)
   const progress = getProgressToNextTier(totalPoints)
-  const displayName = profile?.name || user.email?.split('@')[0] || 'Student'
+  const displayName: string =
+    profile?.name || user.email?.split('@')[0] || 'Student'
+
+  // Celebration modal: triggered by ?celebrate=<sessionId>&awarded=<points>
+  const sp = await searchParams
+  const celebrateId = sp?.celebrate ? parseInt(sp.celebrate, 10) : null
+  const celebrateSession =
+    celebrateId && !Number.isNaN(celebrateId) ? getSessionById(celebrateId) : null
+  const awardedPoints = sp?.awarded ? parseInt(sp.awarded, 10) : 100
+  const showCelebrate = Boolean(
+    celebrateSession && completedSet.has(celebrateSession.id)
+  )
 
   // Determine status for each session: submitted | active | locked
   // Logic: a session is "active" if it's the lowest unsubmitted session.
@@ -57,9 +73,32 @@ export default async function DashboardPage() {
     return 'locked'
   }
 
+  const initials = displayName
+    .split(' ')
+    .map((s) => s[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
   return (
     <div className="min-h-screen flex flex-col">
-      <BrandHeader />
+      <BrandHeader
+        active="dashboard"
+        points={totalPoints}
+        initials={initials}
+      />
+
+      {showCelebrate && celebrateSession && (
+        <CelebrateModal
+          totalPoints={totalPoints}
+          streak={streak}
+          pointsAwarded={Number.isNaN(awardedPoints) ? 100 : awardedPoints}
+          currentTier={tier.name}
+          nextTier={nextTier?.name ?? null}
+          pointsToNextTier={nextTier ? nextTier.min - totalPoints : null}
+          sessionNumber={celebrateSession.number}
+        />
+      )}
 
       <main className="flex-1 max-w-6xl mx-auto w-full px-5 md:px-8 py-12">
         {/* Header */}
