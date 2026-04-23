@@ -20,10 +20,9 @@ export type AdminSubmission = {
   is_public: boolean
   is_featured: boolean
   submitted_at: string
-  profiles:
-    | { name: string | null; email: string | null }
-    | { name: string | null; email: string | null }[]
-    | null
+  user_id: string
+  student_name: string | null
+  student_email: string | null
 }
 
 export function SubmissionsTable({
@@ -240,10 +239,7 @@ export function SubmissionsTable({
           </div>
         ) : (
           rows.map((sub) => {
-            const profile = Array.isArray(sub.profiles)
-              ? sub.profiles[0]
-              : sub.profiles
-            const initials = (profile?.name || profile?.email || '—')
+            const initials = (sub.student_name || sub.student_email || '—')
               .split(/[\s@]+/)
               .map((s: string) => s[0])
               .join('')
@@ -272,7 +268,7 @@ export function SubmissionsTable({
                     checked={isSelected}
                     onChange={() => toggleOne(sub.id)}
                     className="w-4 h-4 accent-yellow cursor-pointer"
-                    aria-label={`Select submission by ${profile?.name || 'student'}`}
+                    aria-label={`Select submission by ${sub.student_name || 'student'}`}
                   />
                 </label>
                 <span className="font-mono text-[11px] text-yellow tracking-[0.12em]">
@@ -284,7 +280,7 @@ export function SubmissionsTable({
                   </div>
                   <div className="min-w-0">
                     <div className="font-sans text-[13px] text-white truncate flex items-center gap-2">
-                      {profile?.name || 'Anonymous'}
+                      {sub.student_name || 'Anonymous'}
                       {hidden && (
                         <span className="font-sans text-[9px] text-white/50 uppercase tracking-[0.14em] border border-white/20 rounded px-1.5 py-0.5">
                           Hidden
