@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
+import { isAdmin } from '@/lib/admin'
 
 type NavKey = 'dashboard' | 'showcase' | 'leaderboard' | 'rewards' | 'admin'
 
@@ -11,7 +13,13 @@ const NAV: NavItem[] = [
   { key: 'rewards',     href: '/rewards',     label: 'Rewards' },
 ]
 
-export function BrandHeader({
+const ADMIN_NAV: NavItem = {
+  key: 'admin',
+  href: '/admin',
+  label: 'Admin',
+}
+
+export async function BrandHeader({
   active,
   points,
   initials,
@@ -20,6 +28,13 @@ export function BrandHeader({
   points?: number
   initials?: string
 } = {}) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const isLoggedIn = Boolean(user)
+  const navItems = isAdmin(user?.email) ? [...NAV, ADMIN_NAV] : NAV
+
   return (
     <header className="border-b border-white/10 bg-black">
       <div className="max-w-6xl mx-auto px-5 md:px-8 py-5 flex items-center justify-between gap-4">
@@ -35,24 +50,26 @@ export function BrandHeader({
             The Launchpad <span className="text-yellow">Challenge</span>
           </span>
         </Link>
-        <nav className="flex items-center gap-5 md:gap-7">
-          {NAV.map((item) => {
-            const on = active === item.key
-            return (
-              <Link
-                key={item.key}
-                href={item.href}
-                className={`font-sans text-[13px] uppercase tracking-wider transition ${
-                  on
-                    ? 'text-yellow'
-                    : 'text-white/60 hover:text-yellow'
-                }`}
-              >
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
+        {isLoggedIn && (
+          <nav className="flex items-center gap-5 md:gap-7">
+            {navItems.map((item) => {
+              const on = active === item.key
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  className={`font-sans text-[13px] uppercase tracking-wider transition ${
+                    on
+                      ? 'text-yellow'
+                      : 'text-white/60 hover:text-yellow'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              )
+            })}
+          </nav>
+        )}
         <div className="flex items-center gap-3 shrink-0">
           {typeof points === 'number' && (
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-yellow/40 bg-yellow/10 text-yellow font-sans text-[11px] font-bold uppercase tracking-wider">
