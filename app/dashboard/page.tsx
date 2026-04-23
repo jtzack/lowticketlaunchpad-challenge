@@ -9,7 +9,6 @@ import {
   computeTotalPoints,
   getTier,
   getNextTier,
-  getProgressToNextTier,
   type Submission,
 } from '@/lib/points'
 import { CelebrateModal } from './celebrate-modal'
@@ -56,7 +55,6 @@ export default async function DashboardPage({
   const streakBonus = Math.max(0, totalPoints - basePoints)
   const tier = getTier(totalPoints)
   const nextTier = getNextTier(totalPoints)
-  const progress = getProgressToNextTier(totalPoints)
   const displayName: string =
     profile?.name || user.email?.split('@')[0] || 'Student'
 
@@ -144,21 +142,12 @@ export default async function DashboardPage({
           </div>
         </section>
 
-        {/* Tier progress bar */}
-        {nextTier && (
-          <section className="mb-8">
-            <div className="flex justify-between text-[11px] font-sans uppercase tracking-wider mb-2">
-              <span className="text-white/40">{tier.name}</span>
-              <span className="text-white/40">{nextTier.name}</span>
-            </div>
-            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-yellow transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </section>
-        )}
+        {/* Session progress bar with tier markers overlaid */}
+        <SessionProgressBar
+          sessions={sessions}
+          completedSet={completedSet}
+          currentTierName={tier.name}
+        />
 
         {/* Next-up CTA + stats, side by side so horizontal space isn't wasted */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
@@ -196,6 +185,104 @@ export default async function DashboardPage({
         </p>
       </footer>
     </div>
+  )
+}
+
+// Tier checkpoints sit at the dots where a perfect-run student reaches each
+// tier: Builder at session 2, Launcher at session 4, Master at session 6.
+// Starter is the starting state at session 1.
+const TIER_CHECKPOINTS: { name: string; dotIndex: number }[] = [
+  { name: 'Starter', dotIndex: 0 },
+  { name: 'Builder', dotIndex: 1 },
+  { name: 'Launcher', dotIndex: 3 },
+  { name: 'Master', dotIndex: 5 },
+]
+
+function SessionProgressBar({
+  sessions,
+  completedSet,
+  currentTierName,
+}: {
+  sessions: { id: number; number: number }[]
+  completedSet: Set<number>
+  currentTierName: string
+}) {
+  const total = sessions.length
+  if (total === 0) return null
+  const completedCount = sessions.filter((s) => completedSet.has(s.id)).length
+  const lastFilledIndex = completedCount - 1 // -1 if none submitted
+  // Fill line reaches the last filled dot (or 0 if none submitted yet).
+  const fillPercent =
+    lastFilledIndex < 0 ? 0 : (lastFilledIndex / (total - 1)) * 100
+
+  return (
+    <section className="mb-10">
+      {/* Tier labels */}
+      <div className="relative h-5 mb-2">
+        {TIER_CHECKPOINTS.map((t) => {
+          const left = (t.dotIndex / (total - 1)) * 100
+          const isCurrent = t.name === currentTierName
+          return (
+            <span
+              key={t.name}
+              className={`absolute -translate-x-1/2 font-sans text-[10px] font-bold uppercase tracking-[0.14em] transition ${
+                isCurrent ? 'text-yellow' : 'text-white/35'
+              }`}
+              style={{ left: `${left}%` }}
+            >
+              {t.name}
+            </span>
+          )
+        })}
+      </div>
+
+      {/* Bar with dots */}
+      <div className="relative h-5">
+        {/* Background line */}
+        <div className="absolute top-1/2 left-0 right-0 h-[2px] bg-white/10 -translate-y-1/2" />
+        {/* Filled line up to last submitted session */}
+        <div
+          className="absolute top-1/2 left-0 h-[2px] bg-yellow -translate-y-1/2 transition-all"
+          style={{ width: `${fillPercent}%` }}
+        />
+        {/* Session dots */}
+        {sessions.map((s, i) => {
+          const left = (i / (total - 1)) * 100
+          const isDone = completedSet.has(s.id)
+          return (
+            <div
+              key={s.id}
+              className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
+              style={{ left: `${left}%` }}
+            >
+              <div
+                className={`w-3.5 h-3.5 rounded-full border-2 transition ${
+                  isDone
+                    ? 'bg-yellow border-yellow'
+                    : 'bg-black border-white/25'
+                }`}
+              />
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Session number labels */}
+      <div className="relative h-4 mt-2">
+        {sessions.map((s, i) => {
+          const left = (i / (total - 1)) * 100
+          return (
+            <span
+              key={s.id}
+              className="absolute -translate-x-1/2 font-mono text-[10px] tracking-[0.12em] text-white/40"
+              style={{ left: `${left}%` }}
+            >
+              S0{s.number}
+            </span>
+          )
+        })}
+      </div>
+    </section>
   )
 }
 
