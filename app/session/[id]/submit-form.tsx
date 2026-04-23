@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { computePointsBreakdown } from '@/lib/scoring'
+import { submitProof, updateProof } from './actions'
 
 export type SubmissionDraft = {
   id: string
@@ -10,17 +11,20 @@ export type SubmissionDraft = {
   proof_url: string | null
   proof_text: string | null
   notes: string | null
+  submitted_at?: string
 }
 
 export function SubmitForm({
   sessionId,
-  userId,
+  userId: _userId,
+  dueAt,
   existing,
   onSaved,
   onCancel,
 }: {
   sessionId: number
   userId: string
+  dueAt: string | null
   existing?: SubmissionDraft
   onSaved?: () => void
   onCancel?: () => void
@@ -33,56 +37,55 @@ export function SubmitForm({
   const [proofUrl, setProofUrl] = useState(existing?.proof_url ?? '')
   const [proofText, setProofText] = useState(existing?.proof_text ?? '')
   const [notes, setNotes] = useState(existing?.notes ?? '')
-  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [pending, startTransition] = useTransition()
+
+  // Use the original submitted_at for edits so a tiny edit doesn't
+  // suddenly push points up or down; new submissions score against now.
+  const effectiveSubmittedAt = existing?.submitted_at ?? new Date().toISOString()
+
+  const breakdown = useMemo(
+    () =>
+      computePointsBreakdown({
+        proofType,
+        hasUrl: Boolean(proofUrl.trim()),
+        hasNotes: Boolean(notes.trim()),
+        submittedAt: effectiveSubmittedAt,
+        dueAt,
+      }),
+    [proofType, proofUrl, notes, dueAt, effectiveSubmittedAt]
+  )
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    setSubmitting(true)
 
-    const supabase = createClient()
     const payload = {
-      proof_type: proofType,
-      proof_url: proofType === 'link' ? proofUrl : null,
-      proof_text: proofType === 'text' ? proofText : null,
+      proofType,
+      proofUrl: proofType === 'link' ? proofUrl : null,
+      proofText: proofType === 'text' ? proofText : null,
       notes: notes || null,
     }
 
-    if (isEdit && existing) {
-      const { error: updateError } = await supabase
-        .from('submissions')
-        .update(payload)
-        .eq('id', existing.id)
+    startTransition(async () => {
+      const res = isEdit && existing
+        ? await updateProof(existing.id, payload)
+        : await submitProof(sessionId, payload)
 
-      if (updateError) {
-        setError(updateError.message)
-        setSubmitting(false)
+      if (!res.ok) {
+        setError(res.error)
         return
       }
 
+      if (isEdit) {
+        router.refresh()
+        onSaved?.()
+        return
+      }
+
+      router.push(`/dashboard?celebrate=${sessionId}&awarded=${res.pointsAwarded}`)
       router.refresh()
-      onSaved?.()
-      setSubmitting(false)
-      return
-    }
-
-    const { error: insertError } = await supabase.from('submissions').insert({
-      ...payload,
-      user_id: userId,
-      session_id: sessionId,
-      points_awarded: 100,
-      is_public: true,
     })
-
-    if (insertError) {
-      setError(insertError.message)
-      setSubmitting(false)
-      return
-    }
-
-    router.push(`/dashboard?celebrate=${sessionId}&awarded=100`)
-    router.refresh()
   }
 
   return (
@@ -150,25 +153,50 @@ export function SubmitForm({
         className="w-full bg-black border border-white/20 rounded-md px-4 py-3 font-sans text-[13px] text-white placeholder:text-white/30 focus:border-blue focus:outline-none mb-4"
       />
 
+      {/* Points preview */}
+      <div className="mb-4 px-4 py-3 rounded-md border border-yellow/20 bg-yellow/[0.04]">
+        <div className="flex items-center justify-between gap-3">
+          <span className="font-sans text-[11px] font-bold text-yellow uppercase tracking-[0.14em]">
+            {isEdit ? 'Updated Score' : 'You’ll Earn'}
+          </span>
+          <span className="font-display text-[24px] text-yellow leading-none">
+            {breakdown.total} pts
+          </span>
+        </div>
+        <div className="font-sans text-[12px] text-white/55 mt-1.5">
+          {breakdown.base} base ({breakdown.baseReason})
+          {breakdown.daysLate > 0 && (
+            <>
+              {' · '}
+              <span className="text-red-300">
+                {breakdown.daysLate} day
+                {breakdown.daysLate === 1 ? '' : 's'} late ·{' '}
+                -{Math.round((1 - breakdown.multiplier) * 100)}%
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+
       <div className={isEdit ? 'flex gap-2' : ''}>
         <button
           type="submit"
-          disabled={submitting}
+          disabled={pending}
           className="flex-1 bg-yellow text-black font-sans text-[14px] font-bold uppercase tracking-[0.08em] py-3.5 rounded-md hover:bg-yellow/90 transition disabled:opacity-50"
         >
-          {submitting
+          {pending
             ? isEdit
               ? 'Saving…'
               : 'Submitting…'
             : isEdit
               ? 'Save changes'
-              : 'Submit & Earn 100 Points'}
+              : `Submit & Earn ${breakdown.total} Points`}
         </button>
         {isEdit && onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            disabled={submitting}
+            disabled={pending}
             className="px-5 bg-transparent border border-white/20 text-white/70 font-sans text-[13px] font-bold uppercase tracking-[0.08em] rounded-md hover:border-white/40 hover:text-white transition disabled:opacity-50"
           >
             Cancel

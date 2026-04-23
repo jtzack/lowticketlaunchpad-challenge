@@ -89,6 +89,7 @@ export default async function SessionPage({
             <MySubmissionCard
               sessionId={sessionId}
               userId={user.id}
+              dueAt={session.due_at ?? null}
               submission={{
                 id: mySubmission.id,
                 proof_type: mySubmission.proof_type,
@@ -100,7 +101,11 @@ export default async function SessionPage({
               submittedAt={mySubmission.submitted_at}
             />
           ) : (
-            <SubmitForm sessionId={sessionId} userId={user.id} />
+            <SubmitForm
+              sessionId={sessionId}
+              userId={user.id}
+              dueAt={session.due_at ?? null}
+            />
           )}
         </div>
 
