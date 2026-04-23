@@ -43,6 +43,15 @@ export default async function DashboardPage({
     .eq('user_id', user.id)
     .order('session_id', { ascending: true })
 
+  const { data: sessionRows } = await supabase
+    .from('sessions')
+    .select('id, due_at')
+
+  const dueByIdMap = new Map<number, string | null>()
+  for (const row of sessionRows || []) {
+    dueByIdMap.set(row.id, row.due_at ?? null)
+  }
+
   const submissions = (submissionsData || []) as Submission[]
   const completedSet = new Set(submissions.map((s) => s.session_id))
   const totalPoints = computeTotalPoints(submissions)
@@ -166,6 +175,7 @@ export default async function DashboardPage({
                 key={session.id}
                 session={session}
                 status={getStatus(session.id)}
+                dueAt={dueByIdMap.get(session.id) ?? null}
               />
             ))}
           </div>
