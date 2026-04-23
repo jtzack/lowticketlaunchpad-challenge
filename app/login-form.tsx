@@ -38,13 +38,14 @@ export function LoginForm() {
 
   if (status === 'sent') {
     return (
-      <div className="border border-blue/40 bg-blue/5 rounded-lg p-6 text-center">
-        <p className="font-display text-[20px] text-yellow uppercase mb-2">
+      <div className="border border-blue/40 bg-blue/5 rounded-[14px] p-7 text-center">
+        <p className="font-display text-[22px] text-yellow uppercase mb-2 tracking-wide">
           Check Your Email
         </p>
-        <p className="font-sans text-[14px] text-white/60">
-          We sent a magic link to <strong className="text-white">{email}</strong>.
-          Click it to access your dashboard.
+        <p className="font-sans text-[14px] text-white/60 leading-relaxed">
+          We sent a magic link to{' '}
+          <strong className="text-white">{email}</strong>. Click it to access
+          your dashboard.
         </p>
       </div>
     )
@@ -53,14 +54,11 @@ export function LoginForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="border border-white/10 rounded-lg p-6 bg-dark/50"
+      className="border border-white/20 rounded-[14px] p-7 bg-[#0f0f0f]"
     >
-      <label
-        htmlFor="email"
-        className="block font-sans text-[11px] font-bold text-blue uppercase tracking-[0.15em] mb-3"
-      >
-        Sign In With Magic Link
-      </label>
+      <p className="font-sans text-[11px] font-bold text-blue uppercase tracking-[0.18em] mb-3.5">
+        Sign in · Magic link
+      </p>
       <input
         id="email"
         type="email"
@@ -68,19 +66,19 @@ export function LoginForm() {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@example.com"
-        className="w-full bg-black border border-white/20 rounded-md px-4 py-3 font-sans text-[15px] text-white placeholder:text-white/30 focus:border-blue focus:outline-none mb-3"
+        className="w-full bg-black border border-white/20 rounded-lg px-4 py-3.5 font-sans text-[14px] text-white placeholder:text-white/35 focus:border-blue focus:outline-none"
       />
       <button
         type="submit"
         disabled={status === 'sending'}
-        className="w-full bg-yellow text-black font-sans text-[14px] font-bold uppercase tracking-[0.08em] py-3 rounded-md hover:bg-yellow/90 transition disabled:opacity-50"
+        className="w-full mt-3 bg-yellow text-black font-sans text-[14px] font-bold uppercase tracking-[0.08em] py-3.5 rounded-lg hover:bg-yellow/90 transition disabled:opacity-50"
       >
-        {status === 'sending' ? 'Sending\u2026' : 'Send Magic Link'}
+        {status === 'sending' ? 'Sending…' : 'Send magic link →'}
       </button>
       {error && (
         <p className="mt-3 text-[13px] text-red-400 text-center">{error}</p>
       )}
-      <p className="mt-3 font-sans text-[11px] text-white/35 text-center">
+      <p className="mt-3 font-sans text-[11px] text-white/40 text-center">
         No password. We&apos;ll email you a sign-in link.
       </p>
     </form>

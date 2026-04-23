@@ -47,6 +47,9 @@ export function SubmitForm({
       return
     }
 
+    router.push(
+      `/dashboard?celebrate=${sessionId}&awarded=${payload.points_awarded}`
+    )
     router.refresh()
   }
 

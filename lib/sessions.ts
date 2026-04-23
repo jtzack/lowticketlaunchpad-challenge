@@ -8,6 +8,18 @@ export type SessionInfo = {
   description: string
   homework_prompt: string
   points_value: number
+  due_at?: string | null
+  opens_at?: string | null
+}
+
+// Short tag shown on chips/cards — VALIDATE, BUILD, SHIP, OFFER, OUTLINE, LAUNCH
+export const SESSION_TAGS: Record<number, string> = {
+  1: 'VALIDATE',
+  2: 'BUILD',
+  3: 'SHIP',
+  4: 'OFFER',
+  5: 'OUTLINE',
+  6: 'LAUNCH',
 }
 
 export const SESSIONS: SessionInfo[] = [
