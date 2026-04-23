@@ -16,11 +16,28 @@ type LeaderboardRow = {
 export default async function LeaderboardPage() {
   const supabase = await createClient()
 
-  // Pull all public submissions joined to profiles
+  // Pull all public submissions and their authors' names as two queries
+  // instead of a PostgREST resource embed — the embed has been flaky
+  // since submission_likes was added to the schema.
   const { data: subs } = await supabase
     .from('submissions')
-    .select('*, profiles(name)')
+    .select('*')
     .eq('is_public', true)
+
+  const rawSubs = subs ?? []
+  const userIds = Array.from(
+    new Set(rawSubs.map((s) => s.user_id).filter(Boolean))
+  )
+  const nameByUserId = new Map<string, string | null>()
+  if (userIds.length > 0) {
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, name')
+      .in('id', userIds)
+    for (const p of profilesData ?? []) {
+      nameByUserId.set(p.id, p.name ?? null)
+    }
+  }
 
   // Aggregate by user
   const byUser = new Map<
@@ -28,14 +45,13 @@ export default async function LeaderboardPage() {
     { name: string | null; submissions: Submission[] }
   >()
 
-  for (const sub of subs || []) {
-    const profile = Array.isArray(sub.profiles) ? sub.profiles[0] : sub.profiles
+  for (const sub of rawSubs) {
     const existing = byUser.get(sub.user_id)
     if (existing) {
       existing.submissions.push(sub as Submission)
     } else {
       byUser.set(sub.user_id, {
-        name: profile?.name || null,
+        name: nameByUserId.get(sub.user_id) ?? null,
         submissions: [sub as Submission],
       })
     }
