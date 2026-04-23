@@ -29,6 +29,7 @@ export function SessionRow({
   sessionId,
   number,
   initialTitle,
+  initialDescription,
   initialDueAt,
   status,
   opensLabel,
@@ -36,11 +37,13 @@ export function SessionRow({
   sessionId: number
   number: number
   initialTitle: string
+  initialDescription: string
   initialDueAt: string | null
   status: Status
   opensLabel: string | null
 }) {
   const [title, setTitle] = useState(initialTitle)
+  const [description, setDescription] = useState(initialDescription)
   const [date, setDate] = useState(toDateInput(initialDueAt))
   const [time, setTime] = useState(toTimeInput(initialDueAt) || '23:59')
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(
@@ -51,10 +54,11 @@ export function SessionRow({
   const dirty = useMemo(() => {
     return (
       title !== initialTitle ||
+      description !== initialDescription ||
       date !== toDateInput(initialDueAt) ||
       time !== (toTimeInput(initialDueAt) || '23:59')
     )
-  }, [title, date, time, initialTitle, initialDueAt])
+  }, [title, description, date, time, initialTitle, initialDescription, initialDueAt])
 
   function save() {
     setMsg(null)
@@ -65,7 +69,7 @@ export function SessionRow({
       if (!Number.isNaN(local.getTime())) dueIso = local.toISOString()
     }
     startTransition(async () => {
-      const res = await updateSession(sessionId, title, dueIso)
+      const res = await updateSession(sessionId, title, description, dueIso)
       if (res.ok) {
         setMsg({ kind: 'ok', text: 'Saved' })
       } else {
@@ -109,6 +113,15 @@ export function SessionRow({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="w-full bg-[#0b0b0b] border border-white/15 rounded-md px-3 py-2.5 font-sans text-[13px] text-white focus:border-blue focus:outline-none"
+        />
+        <label className="block font-mono text-[10px] text-white/40 tracking-[0.14em] mt-3 mb-1.5">
+          SUBTITLE
+        </label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={2}
+          className="w-full bg-[#0b0b0b] border border-white/15 rounded-md px-3 py-2.5 font-sans text-[13px] text-white/90 leading-[1.5] focus:border-blue focus:outline-none resize-y"
         />
         <div className="font-sans text-[11px] text-white/40 mt-2 uppercase tracking-[0.1em]">
           {statusLine}

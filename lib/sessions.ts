@@ -1,6 +1,8 @@
 // Hardcoded session data — used for static rendering and fallback
 // Source of truth lives in Supabase, but this matches the seed.
 
+import type { SupabaseClient } from '@supabase/supabase-js'
+
 export type SessionInfo = {
   id: number
   number: number
@@ -87,4 +89,41 @@ export const SESSIONS: SessionInfo[] = [
 
 export function getSessionById(id: number): SessionInfo | undefined {
   return SESSIONS.find((s) => s.id === id)
+}
+
+// Fetches session rows from the DB and merges them with the static SESSIONS
+// defaults. DB values win when present; the static list fills in anything
+// the DB omits and preserves the canonical 1–6 ordering.
+export async function getSessionsFromDb(
+  supabase: SupabaseClient
+): Promise<SessionInfo[]> {
+  const { data } = await supabase
+    .from('sessions')
+    .select(
+      'id, title, description, homework_prompt, due_at, opens_at, points_value'
+    )
+    .order('id', { ascending: true })
+
+  const dbById = new Map(data?.map((r) => [r.id, r]) ?? [])
+  return SESSIONS.map((s) => {
+    const row = dbById.get(s.id)
+    if (!row) return s
+    return {
+      ...s,
+      title: row.title ?? s.title,
+      description: row.description ?? s.description,
+      homework_prompt: row.homework_prompt ?? s.homework_prompt,
+      points_value: row.points_value ?? s.points_value,
+      due_at: row.due_at ?? null,
+      opens_at: row.opens_at ?? null,
+    }
+  })
+}
+
+export async function getSessionByIdFromDb(
+  supabase: SupabaseClient,
+  id: number
+): Promise<SessionInfo | undefined> {
+  const merged = await getSessionsFromDb(supabase)
+  return merged.find((s) => s.id === id)
 }

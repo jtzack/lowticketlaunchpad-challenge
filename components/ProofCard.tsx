@@ -6,6 +6,10 @@ type ProofCardProps = {
   studentName?: string | null
   showSession?: boolean
   featured?: boolean
+  // Optional server-fetched session info. Pass from pages that already
+  // have DB-backed session data so admin title edits propagate here
+  // without a round-trip through the static SESSIONS constant.
+  session?: { number: number; title: string } | null
 }
 
 export function ProofCard({
@@ -13,8 +17,9 @@ export function ProofCard({
   studentName,
   showSession = false,
   featured = false,
+  session: sessionOverride,
 }: ProofCardProps) {
-  const session = getSessionById(submission.session_id)
+  const session = sessionOverride ?? getSessionById(submission.session_id)
   const date = new Date(submission.submitted_at).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',

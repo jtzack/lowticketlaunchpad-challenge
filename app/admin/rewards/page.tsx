@@ -82,6 +82,7 @@ export default async function AdminRewardsPage() {
                 sessionTag={SESSION_TAGS[r.session_id] || ''}
                 sessionNumber={session?.number ?? r.session_id}
                 initialTitle={r.title}
+                initialDescription={r.description ?? ''}
                 initialUrl={r.url}
                 stats={{
                   unlocks: unlocksBySession[r.session_id] || 0,

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { BrandHeader } from '@/components/BrandHeader'
 import { ProofCard } from '@/components/ProofCard'
 import type { Submission } from '@/lib/points'
-import { SESSIONS } from '@/lib/sessions'
+import { getSessionsFromDb } from '@/lib/sessions'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +24,9 @@ export default async function ShowcasePage({
       : 'all'
 
   const supabase = await createClient()
+
+  const sessions = await getSessionsFromDb(supabase)
+  const sessionById = new Map(sessions.map((s) => [s.id, s]))
 
   // Full counts (unfiltered) for chip labels
   const { data: allSubs } = await supabase
@@ -89,7 +92,7 @@ export default async function ShowcasePage({
             accent="yellow"
           />
           <span className="w-px h-5 bg-white/10 mx-1" />
-          {SESSIONS.map((s) => (
+          {sessions.map((s) => (
             <FilterChip
               key={s.id}
               href={`/showcase?session=${s.id}`}
@@ -117,6 +120,7 @@ export default async function ShowcasePage({
               const profile = Array.isArray(sub.profiles)
                 ? sub.profiles[0]
                 : sub.profiles
+              const sessionInfo = sessionById.get(sub.session_id)
               return (
                 <ProofCard
                   key={sub.id}
@@ -124,6 +128,11 @@ export default async function ShowcasePage({
                   studentName={profile?.name || null}
                   showSession
                   featured={Boolean(sub.is_featured)}
+                  session={
+                    sessionInfo
+                      ? { number: sessionInfo.number, title: sessionInfo.title }
+                      : null
+                  }
                 />
               )
             })}

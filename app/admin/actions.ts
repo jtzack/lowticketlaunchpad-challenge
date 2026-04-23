@@ -134,6 +134,7 @@ export async function deleteSubmissions(
 export async function updateSession(
   sessionId: number,
   title: string,
+  description: string,
   dueAtIso: string | null
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
@@ -141,10 +142,16 @@ export async function updateSession(
     const admin = createAdminClient()
     const { error } = await admin
       .from('sessions')
-      .update({ title, due_at: dueAtIso })
+      .update({ title, description, due_at: dueAtIso })
       .eq('id', sessionId)
     if (error) return { ok: false, error: error.message }
+    // Sessions are displayed across the whole app; bust every cache that
+    // renders a title, subtitle, or due date so edits appear immediately.
     revalidatePath('/admin/sessions')
+    revalidatePath('/admin')
+    revalidatePath('/dashboard')
+    revalidatePath('/session/[id]', 'page')
+    revalidatePath('/showcase')
     return { ok: true }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Unknown error' }
@@ -154,6 +161,7 @@ export async function updateSession(
 export async function updateReward(
   rewardId: number,
   title: string,
+  description: string | null,
   url: string | null
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
@@ -161,7 +169,12 @@ export async function updateReward(
     const admin = createAdminClient()
     const { error } = await admin
       .from('rewards')
-      .update({ title, url, updated_at: new Date().toISOString() })
+      .update({
+        title,
+        description,
+        url,
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', rewardId)
     if (error) return { ok: false, error: error.message }
     revalidatePath('/admin/rewards')
