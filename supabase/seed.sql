@@ -67,6 +67,17 @@ create table if not exists public.reward_claims (
   primary key (user_id, reward_id)
 );
 
+-- ─── Submission likes ───
+create table if not exists public.submission_likes (
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  submission_id uuid references public.submissions(id) on delete cascade not null,
+  created_at timestamptz default now(),
+  primary key (user_id, submission_id)
+);
+
+create index if not exists submission_likes_submission_idx
+  on public.submission_likes(submission_id);
+
 create index if not exists reward_claims_user_idx on public.reward_claims(user_id);
 
 -- ─── Row Level Security ───
@@ -75,6 +86,7 @@ alter table public.sessions enable row level security;
 alter table public.submissions enable row level security;
 alter table public.rewards enable row level security;
 alter table public.reward_claims enable row level security;
+alter table public.submission_likes enable row level security;
 
 -- Profiles: anyone can read, only the owner can insert/update their own
 drop policy if exists "Profiles are viewable by everyone" on public.profiles;
@@ -130,6 +142,22 @@ drop policy if exists "Users can claim rewards for themselves" on public.reward_
 create policy "Users can claim rewards for themselves"
   on public.reward_claims for insert
   with check (auth.uid() = user_id);
+
+-- Submission likes: counts are public, signed-in users like/unlike themselves
+drop policy if exists "Likes are viewable by everyone" on public.submission_likes;
+create policy "Likes are viewable by everyone"
+  on public.submission_likes for select
+  using (true);
+
+drop policy if exists "Users can like as themselves" on public.submission_likes;
+create policy "Users can like as themselves"
+  on public.submission_likes for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can remove own likes" on public.submission_likes;
+create policy "Users can remove own likes"
+  on public.submission_likes for delete
+  using (auth.uid() = user_id);
 
 -- ─── Auto-create profile on signup ───
 create or replace function public.handle_new_user()

@@ -24,6 +24,9 @@ export default async function ShowcasePage({
       : 'all'
 
   const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   const sessions = await getSessionsFromDb(supabase)
   const sessionById = new Map(sessions.map((s) => [s.id, s]))
@@ -42,20 +45,57 @@ export default async function ShowcasePage({
   }
   const totalCount = (allSubs || []).length
 
-  // Filtered query for the grid
+  // Filtered query for the grid. Fetch more than we display so the in-JS
+  // sort by likes doesn't ignore older-but-popular posts outside a
+  // recency-limited window.
   let query = supabase
     .from('submissions')
     .select('*, profiles(name)')
     .eq('is_public', true)
     .order('submitted_at', { ascending: false })
-    .limit(60)
+    .limit(200)
 
   if (wantsFeatured) query = query.eq('is_featured', true)
   if (sessionFilter && !wantsFeatured)
     query = query.eq('session_id', sessionFilter)
 
   const { data: submissionsData } = await query
-  const submissions = submissionsData || []
+  const rawSubmissions = submissionsData || []
+
+  // Like counts for just these submissions (only signed-in users can like,
+  // but counts are readable by everyone per RLS).
+  const submissionIds = rawSubmissions.map((s) => s.id)
+  const likeCountById = new Map<string, number>()
+  const likedByMe = new Set<string>()
+  if (submissionIds.length > 0) {
+    const { data: likesData } = await supabase
+      .from('submission_likes')
+      .select('submission_id, user_id')
+      .in('submission_id', submissionIds)
+    for (const l of likesData || []) {
+      likeCountById.set(
+        l.submission_id,
+        (likeCountById.get(l.submission_id) ?? 0) + 1
+      )
+      if (user && l.user_id === user.id) likedByMe.add(l.submission_id)
+    }
+  }
+
+  // Sort: featured first, then by like count desc, then by recency desc.
+  const submissions = [...rawSubmissions]
+    .sort((a, b) => {
+      if (Boolean(a.is_featured) !== Boolean(b.is_featured)) {
+        return a.is_featured ? -1 : 1
+      }
+      const la = likeCountById.get(a.id) ?? 0
+      const lb = likeCountById.get(b.id) ?? 0
+      if (la !== lb) return lb - la
+      return (
+        new Date(b.submitted_at).getTime() -
+        new Date(a.submitted_at).getTime()
+      )
+    })
+    .slice(0, 60)
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -133,6 +173,9 @@ export default async function ShowcasePage({
                       ? { number: sessionInfo.number, title: sessionInfo.title }
                       : null
                   }
+                  likeCount={likeCountById.get(sub.id) ?? 0}
+                  likedByMe={likedByMe.has(sub.id)}
+                  canLike={Boolean(user)}
                 />
               )
             })}
