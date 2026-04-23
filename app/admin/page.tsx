@@ -16,13 +16,51 @@ export default async function AdminShowcasePage() {
   if (!user) redirect('/')
   if (!isAdmin(user.email)) return <NotAuthorized />
 
+  // Fetch submissions and their student profiles in separate queries. A
+  // PostgREST resource embed for profiles has been flaky since we added
+  // the submission_likes table (stale schema cache), so we merge in JS
+  // instead.
   const { data: subs } = await supabase
     .from('submissions')
-    .select('*, profiles(name, email)')
+    .select('*')
     .order('submitted_at', { ascending: false })
     .limit(200)
 
-  const submissions = (subs || []) as AdminSubmission[]
+  const rawSubs = subs ?? []
+  const userIds = Array.from(
+    new Set(rawSubs.map((s) => s.user_id).filter(Boolean))
+  )
+  const profileByUserId = new Map<
+    string,
+    { name: string | null; email: string | null }
+  >()
+  if (userIds.length > 0) {
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, name, email')
+      .in('id', userIds)
+    for (const p of profilesData ?? []) {
+      profileByUserId.set(p.id, { name: p.name ?? null, email: p.email ?? null })
+    }
+  }
+
+  const submissions: AdminSubmission[] = rawSubs.map((s) => {
+    const profile = profileByUserId.get(s.user_id)
+    return {
+      id: s.id,
+      session_id: s.session_id,
+      proof_type: s.proof_type,
+      proof_url: s.proof_url,
+      proof_text: s.proof_text,
+      notes: s.notes,
+      is_public: s.is_public,
+      is_featured: s.is_featured,
+      submitted_at: s.submitted_at,
+      user_id: s.user_id,
+      student_name: profile?.name ?? null,
+      student_email: profile?.email ?? null,
+    }
+  })
   const featuredCount = submissions.filter((s) => s.is_featured).length
   const hiddenCount = submissions.filter((s) => !s.is_public).length
 

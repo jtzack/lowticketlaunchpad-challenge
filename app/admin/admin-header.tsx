@@ -30,9 +30,6 @@ export function AdminHeader({
           <span className="font-display text-[15px] uppercase tracking-[0.05em] text-white whitespace-nowrap">
             Launchpad <span className="text-yellow">Admin</span>
           </span>
-          <span className="ml-2 px-2 py-0.5 border border-white/15 rounded-full font-mono text-[9px] tracking-[0.12em] text-white/50 uppercase hidden sm:inline">
-            Cohort 07
-          </span>
         </Link>
         <nav className="flex items-center gap-5 md:gap-7">
           {TABS.map((t) => {
