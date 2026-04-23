@@ -11,6 +11,7 @@ type SessionRowData = {
   id: number
   number: number
   title: string
+  description: string
   due_at: string | null
   opens_at: string | null
 }
@@ -26,7 +27,7 @@ export default async function AdminSessionsPage() {
 
   const { data: sessionsData } = await supabase
     .from('sessions')
-    .select('id, number, title, due_at, opens_at')
+    .select('id, number, title, description, due_at, opens_at')
     .order('id', { ascending: true })
 
   // Fall back to hardcoded metadata if the DB hasn't been updated yet.
@@ -37,6 +38,7 @@ export default async function AdminSessionsPage() {
           id: s.id,
           number: s.number,
           title: s.title,
+          description: s.description,
           due_at: null,
           opens_at: null,
         }))
@@ -57,8 +59,9 @@ export default async function AdminSessionsPage() {
               Homework &amp; due dates.
             </h1>
             <p className="font-sans text-[14px] text-white/55 mt-2 max-w-[640px]">
-              Edit the title and deadline for each of the 6 sessions. Students
-              see these immediately.
+              Edit the title, subtitle, and deadline for each of the 6
+              sessions. Students see these immediately across the dashboard,
+              session detail, and showcase.
             </p>
           </div>
         </div>
@@ -136,6 +139,7 @@ export default async function AdminSessionsPage() {
                 sessionId={r.id}
                 number={r.number}
                 initialTitle={r.title}
+                initialDescription={r.description || ''}
                 initialDueAt={r.due_at}
                 status={status}
                 opensLabel={opensLabel}

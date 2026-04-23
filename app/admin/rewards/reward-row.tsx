@@ -8,6 +8,7 @@ export function RewardRow({
   sessionTag,
   sessionNumber,
   initialTitle,
+  initialDescription,
   initialUrl,
   stats,
 }: {
@@ -15,10 +16,12 @@ export function RewardRow({
   sessionTag: string
   sessionNumber: number
   initialTitle: string
+  initialDescription: string
   initialUrl: string | null
   stats: { unlocks: number; claimed: number; updatedAt: string | null }
 }) {
   const [title, setTitle] = useState(initialTitle)
+  const [description, setDescription] = useState(initialDescription)
   const [url, setUrl] = useState(initialUrl ?? '')
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(
     null
@@ -28,8 +31,12 @@ export function RewardRow({
   const empty = !url.trim()
 
   const dirty = useMemo(() => {
-    return title !== initialTitle || (url || null) !== (initialUrl || null)
-  }, [title, url, initialTitle, initialUrl])
+    return (
+      title !== initialTitle ||
+      description !== initialDescription ||
+      (url || null) !== (initialUrl || null)
+    )
+  }, [title, description, url, initialTitle, initialDescription, initialUrl])
 
   function save() {
     setMsg(null)
@@ -37,6 +44,7 @@ export function RewardRow({
       const res = await updateReward(
         rewardId,
         title.trim(),
+        description.trim() || null,
         url.trim() || null
       )
       if (res.ok) {
@@ -65,7 +73,7 @@ export function RewardRow({
         </div>
       </div>
 
-      {/* Name */}
+      {/* Name + subtitle */}
       <div>
         <label className="block font-mono text-[10px] text-white/40 tracking-[0.14em] mb-1.5">
           REWARD NAME
@@ -75,6 +83,16 @@ export function RewardRow({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="w-full bg-[#0b0b0b] border border-white/15 rounded-md px-3 py-2.5 font-sans text-[13px] text-white focus:border-blue focus:outline-none"
+        />
+        <label className="block font-mono text-[10px] text-white/40 tracking-[0.14em] mt-3 mb-1.5">
+          SUBTITLE
+        </label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={2}
+          placeholder="Short description students see on the rewards page"
+          className="w-full bg-[#0b0b0b] border border-white/15 rounded-md px-3 py-2.5 font-sans text-[12px] text-white/90 leading-[1.5] focus:border-blue focus:outline-none resize-y"
         />
         <div className="font-sans text-[11px] text-white/40 mt-2">
           {stats.unlocks} unlocked · {stats.claimed} claimed

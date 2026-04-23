@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { BrandHeader } from '@/components/BrandHeader'
 import { SessionCard, type SessionStatus } from '@/components/SessionCard'
 import { TierBadge } from '@/components/TierBadge'
-import { SESSIONS, getSessionById } from '@/lib/sessions'
+import { getSessionsFromDb } from '@/lib/sessions'
 import {
   computeStreak,
   computeTotalPoints,
@@ -43,14 +43,7 @@ export default async function DashboardPage({
     .eq('user_id', user.id)
     .order('session_id', { ascending: true })
 
-  const { data: sessionRows } = await supabase
-    .from('sessions')
-    .select('id, due_at')
-
-  const dueByIdMap = new Map<number, string | null>()
-  for (const row of sessionRows || []) {
-    dueByIdMap.set(row.id, row.due_at ?? null)
-  }
+  const sessions = await getSessionsFromDb(supabase)
 
   const submissions = (submissionsData || []) as Submission[]
   const completedSet = new Set(submissions.map((s) => s.session_id))
@@ -66,7 +59,9 @@ export default async function DashboardPage({
   const sp = await searchParams
   const celebrateId = sp?.celebrate ? parseInt(sp.celebrate, 10) : null
   const celebrateSession =
-    celebrateId && !Number.isNaN(celebrateId) ? getSessionById(celebrateId) : null
+    celebrateId && !Number.isNaN(celebrateId)
+      ? sessions.find((s) => s.id === celebrateId) ?? null
+      : null
   const awardedPoints = sp?.awarded ? parseInt(sp.awarded, 10) : 100
   const showCelebrate = Boolean(
     celebrateSession && completedSet.has(celebrateSession.id)
@@ -75,7 +70,7 @@ export default async function DashboardPage({
   // Determine status for each session: submitted | active | locked
   // Logic: a session is "active" if it's the lowest unsubmitted session.
   // Everything before the lowest unsubmitted is submitted, everything after is locked.
-  const lowestUnsubmitted = SESSIONS.find((s) => !completedSet.has(s.id))?.id
+  const lowestUnsubmitted = sessions.find((s) => !completedSet.has(s.id))?.id
   function getStatus(sessionId: number): SessionStatus {
     if (completedSet.has(sessionId)) return 'submitted'
     if (sessionId === lowestUnsubmitted) return 'active'
@@ -170,12 +165,12 @@ export default async function DashboardPage({
             Your Pipeline
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {SESSIONS.map((session) => (
+            {sessions.map((session) => (
               <SessionCard
                 key={session.id}
                 session={session}
                 status={getStatus(session.id)}
-                dueAt={dueByIdMap.get(session.id) ?? null}
+                dueAt={session.due_at ?? null}
               />
             ))}
           </div>

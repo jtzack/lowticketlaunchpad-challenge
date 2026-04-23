@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { BrandHeader } from '@/components/BrandHeader'
 import { ProofCard } from '@/components/ProofCard'
 import { SubmitForm } from './submit-form'
-import { getSessionById } from '@/lib/sessions'
+import { getSessionByIdFromDb } from '@/lib/sessions'
 import type { Submission } from '@/lib/points'
 
 export const dynamic = 'force-dynamic'
@@ -18,10 +18,9 @@ export default async function SessionPage({
   const sessionId = parseInt(id, 10)
   if (Number.isNaN(sessionId)) notFound()
 
-  const session = getSessionById(sessionId)
-  if (!session) notFound()
-
   const supabase = await createClient()
+  const session = await getSessionByIdFromDb(supabase, sessionId)
+  if (!session) notFound()
   const {
     data: { user },
   } = await supabase.auth.getUser()
