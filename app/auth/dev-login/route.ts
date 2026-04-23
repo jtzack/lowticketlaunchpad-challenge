@@ -4,10 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdmin } from '@/lib/admin'
 
-// Dev-only admin shortcut. Visit /auth/dev-login?token=$DEV_ADMIN_LOGIN_TOKEN
+// Admin login shortcut. Visit /auth/dev-login?token=$DEV_ADMIN_LOGIN_TOKEN
 // to drop into a session as the first email listed in ADMIN_EMAILS (override
-// with &email=... if you need a specific one). Gated on NODE_ENV so this
-// route returns 404 in production even if the token env var leaks.
+// with &email=... if you need a specific one). Opt-in via the
+// ENABLE_DEV_ADMIN_LOGIN env var so the route 404s unless you explicitly
+// turn it on — remove the var and redeploy to disable.
 
 function notFound() {
   return new NextResponse('Not found', { status: 404 })
@@ -21,7 +22,7 @@ function tokensMatch(a: string, b: string) {
 }
 
 export async function GET(req: NextRequest) {
-  if (process.env.NODE_ENV === 'production') return notFound()
+  if (process.env.ENABLE_DEV_ADMIN_LOGIN !== 'true') return notFound()
 
   const expected = process.env.DEV_ADMIN_LOGIN_TOKEN
   const provided = req.nextUrl.searchParams.get('token')
