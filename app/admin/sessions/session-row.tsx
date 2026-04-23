@@ -5,14 +5,16 @@ import { updateSession } from '../actions'
 
 type Status = 'closed' | 'live' | 'upcoming'
 
+// All due-date handling uses UTC so the calendar date the admin picks is
+// the same calendar date every student sees, regardless of the admin's
+// or student's local timezone.
 function toDateInput(iso: string | null | undefined): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  // YYYY-MM-DD local
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
+  const y = d.getUTCFullYear()
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
 
@@ -20,8 +22,8 @@ function toTimeInput(iso: string | null | undefined): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  const h = String(d.getHours()).padStart(2, '0')
-  const m = String(d.getMinutes()).padStart(2, '0')
+  const h = String(d.getUTCHours()).padStart(2, '0')
+  const m = String(d.getUTCMinutes()).padStart(2, '0')
   return `${h}:${m}`
 }
 
@@ -65,8 +67,8 @@ export function SessionRow({
     let dueIso: string | null = null
     if (date) {
       const hm = time || '23:59'
-      const local = new Date(`${date}T${hm}:00`)
-      if (!Number.isNaN(local.getTime())) dueIso = local.toISOString()
+      const utc = new Date(`${date}T${hm}:00.000Z`)
+      if (!Number.isNaN(utc.getTime())) dueIso = utc.toISOString()
     }
     startTransition(async () => {
       const res = await updateSession(sessionId, title, description, dueIso)

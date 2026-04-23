@@ -6,10 +6,21 @@ export type SessionStatus = 'locked' | 'active' | 'submitted'
 const OVERDUE_GRACE_DAYS = 2
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
+// Dates are stored and rendered in UTC so the calendar date the admin
+// sets in the admin UI is exactly the date every student sees, no matter
+// which timezone either of them is in.
 function formatDueDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
+function utcDayNumber(d: Date): number {
+  return Math.floor(d.getTime() / MS_PER_DAY)
 }
 
 export function SessionCard({
@@ -27,8 +38,11 @@ export function SessionCard({
 
   const dueDate = dueAt ? new Date(dueAt) : null
   const hasValidDue = dueDate && !Number.isNaN(dueDate.getTime())
+  // Compare calendar days in UTC so "2 days past due" lines up with the
+  // calendar regardless of viewer timezone. If the admin sets Apr 30 as
+  // the due date, the card flips red on May 2 UTC.
   const daysPastDue = hasValidDue
-    ? Math.floor((Date.now() - dueDate.getTime()) / MS_PER_DAY)
+    ? utcDayNumber(new Date()) - utcDayNumber(dueDate)
     : 0
   const isOverdue =
     !isSubmitted && hasValidDue && daysPastDue >= OVERDUE_GRACE_DAYS

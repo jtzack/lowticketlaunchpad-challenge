@@ -105,6 +105,7 @@ export default async function AdminSessionsPage() {
                         ? new Date(r.due_at).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
+                            timeZone: 'UTC',
                           })
                         : '—'}
                     </div>
@@ -131,6 +132,7 @@ export default async function AdminSessionsPage() {
               ? new Date(r.opens_at).toLocaleDateString('en-US', {
                   month: 'short',
                   day: 'numeric',
+                  timeZone: 'UTC',
                 })
               : null
             return (
