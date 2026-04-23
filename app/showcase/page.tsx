@@ -63,21 +63,29 @@ export default async function ShowcasePage({
   const rawSubmissions = submissionsData || []
 
   // Like counts for just these submissions (only signed-in users can like,
-  // but counts are readable by everyone per RLS).
+  // but counts are readable by everyone per RLS). Wrapped so a missing
+  // submission_likes table (e.g. seed.sql not yet re-run) degrades to
+  // zero counts instead of breaking the page.
   const submissionIds = rawSubmissions.map((s) => s.id)
   const likeCountById = new Map<string, number>()
   const likedByMe = new Set<string>()
   if (submissionIds.length > 0) {
-    const { data: likesData } = await supabase
-      .from('submission_likes')
-      .select('submission_id, user_id')
-      .in('submission_id', submissionIds)
-    for (const l of likesData || []) {
-      likeCountById.set(
-        l.submission_id,
-        (likeCountById.get(l.submission_id) ?? 0) + 1
-      )
-      if (user && l.user_id === user.id) likedByMe.add(l.submission_id)
+    try {
+      const { data: likesData, error: likesError } = await supabase
+        .from('submission_likes')
+        .select('submission_id, user_id')
+        .in('submission_id', submissionIds)
+      if (!likesError && likesData) {
+        for (const l of likesData) {
+          likeCountById.set(
+            l.submission_id,
+            (likeCountById.get(l.submission_id) ?? 0) + 1
+          )
+          if (user && l.user_id === user.id) likedByMe.add(l.submission_id)
+        }
+      }
+    } catch {
+      // Silently ignore — the page still renders submissions without likes.
     }
   }
 
