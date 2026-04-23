@@ -1,10 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { BrandHeader } from '@/components/BrandHeader'
-import { SESSIONS } from '@/lib/sessions'
 import { isAdmin } from '@/lib/admin'
 import { AdminHeader } from './admin-header'
-import { FeatureToggle } from './feature-toggle'
+import { SubmissionsTable, type AdminSubmission } from './submissions-table'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,17 +22,13 @@ export default async function AdminShowcasePage() {
     .order('submitted_at', { ascending: false })
     .limit(200)
 
-  const submissions = subs || []
+  const submissions = (subs || []) as AdminSubmission[]
   const featuredCount = submissions.filter((s) => s.is_featured).length
+  const hiddenCount = submissions.filter((s) => !s.is_public).length
 
   const { count: cohortSize } = await supabase
     .from('profiles')
     .select('*', { count: 'exact', head: true })
-
-  const countsBySession: Record<number, number> = {}
-  for (const s of submissions) {
-    countsBySession[s.session_id] = (countsBySession[s.session_id] || 0) + 1
-  }
 
   return (
     <div className="min-h-screen flex flex-col bg-black">
@@ -50,115 +45,22 @@ export default async function AdminShowcasePage() {
               All submissions.
             </h1>
             <p className="font-sans text-[14px] text-white/55 mt-2 max-w-[640px]">
-              Every submission is live on the public showcase. Toggle{' '}
-              <span className="text-yellow">★ Feature</span> to promote the best
-              ones.
+              Toggle <span className="text-yellow">★ Feature</span> to promote
+              the best ones. Use <span className="text-white">Hide</span> to
+              remove a submission from the public showcase and leaderboard
+              without deleting it, or <span className="text-red-300">Delete</span>{' '}
+              to remove it permanently. Select multiple rows for bulk actions.
             </p>
           </div>
           <div className="flex gap-6">
             <Stat value={submissions.length} label="Total" color="#fff" />
             <Stat value={featuredCount} label="Featured" color="#F9E35D" />
+            <Stat value={hiddenCount} label="Hidden" color="#87B8F8" />
             <Stat value={cohortSize || 0} label="Cohort size" color="#87B8F8" />
           </div>
         </div>
 
-        {/* Filter summary chips (read-only, matches design) */}
-        <div className="flex flex-wrap items-center gap-2 mb-5">
-          <Chip label={`ALL · ${submissions.length}`} accent="yellow" />
-          <Chip label={`★ FEATURED · ${featuredCount}`} />
-          <span className="w-px h-5 bg-white/10 mx-1" />
-          {SESSIONS.map((s) => (
-            <Chip
-              key={s.id}
-              label={`S0${s.number} · ${countsBySession[s.id] || 0}`}
-            />
-          ))}
-        </div>
-
-        {/* Submissions table */}
-        <div className="border border-white/10 rounded-xl overflow-hidden">
-          <div className="grid grid-cols-[70px_minmax(0,1.6fr)_minmax(0,1.2fr)_120px_140px] md:grid-cols-[80px_minmax(0,1.6fr)_minmax(0,1.2fr)_100px_100px_140px] px-5 py-3 bg-[#0f0f0f] font-sans text-[10px] text-white/45 uppercase tracking-[0.14em]">
-            <span>Session</span>
-            <span>Student &amp; Proof</span>
-            <span>Note</span>
-            <span className="hidden md:block">Tier</span>
-            <span>Time</span>
-            <span className="text-right">Feature</span>
-          </div>
-
-          {submissions.length === 0 ? (
-            <div className="px-5 py-12 text-center font-sans text-[14px] text-white/40">
-              No submissions yet.
-            </div>
-          ) : (
-            submissions.map((sub) => {
-              const profile = Array.isArray(sub.profiles)
-                ? sub.profiles[0]
-                : sub.profiles
-              const initials = (profile?.name || profile?.email || '—')
-                .split(/[\s@]+/)
-                .map((s: string) => s[0])
-                .join('')
-                .slice(0, 2)
-                .toUpperCase()
-              const time = new Date(sub.submitted_at).toLocaleDateString(
-                'en-US',
-                { month: 'short', day: 'numeric' }
-              )
-              return (
-                <div
-                  key={sub.id}
-                  className={`grid grid-cols-[70px_minmax(0,1.6fr)_minmax(0,1.2fr)_120px_140px] md:grid-cols-[80px_minmax(0,1.6fr)_minmax(0,1.2fr)_100px_100px_140px] px-5 py-4 border-t border-white/10 items-center ${
-                    sub.is_featured ? 'bg-yellow/[0.04]' : ''
-                  }`}
-                >
-                  <span className="font-mono text-[11px] text-yellow tracking-[0.12em]">
-                    S0{sub.session_id}
-                  </span>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-7 h-7 rounded-full bg-blue/15 border border-blue/40 text-blue flex items-center justify-center font-display text-[11px] shrink-0">
-                      {initials || '—'}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-sans text-[13px] text-white truncate">
-                        {profile?.name || 'Anonymous'}
-                      </div>
-                      {sub.proof_type === 'link' && sub.proof_url ? (
-                        <a
-                          href={sub.proof_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-sans text-[12px] text-blue hover:text-yellow underline truncate block"
-                        >
-                          {sub.proof_url}
-                        </a>
-                      ) : (
-                        <span className="font-sans text-[12px] text-white/40 truncate block">
-                          — text submission —
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="font-sans text-[12px] text-white/55 truncate">
-                    {sub.notes || sub.proof_text?.slice(0, 80) || '—'}
-                  </div>
-                  <span className="hidden md:block font-sans text-[12px] text-white/55">
-                    {sub.proof_type === 'text' ? 'Text' : 'Link'}
-                  </span>
-                  <span className="font-mono text-[11px] text-white/40">
-                    {time}
-                  </span>
-                  <div className="flex justify-end">
-                    <FeatureToggle
-                      submissionId={sub.id}
-                      initial={Boolean(sub.is_featured)}
-                    />
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
+        <SubmissionsTable initial={submissions} />
       </main>
 
       <footer className="border-t border-white/10 py-5 text-center">
@@ -191,21 +93,6 @@ function Stat({
         {label}
       </div>
     </div>
-  )
-}
-
-function Chip({ label, accent }: { label: string; accent?: 'yellow' }) {
-  if (accent === 'yellow') {
-    return (
-      <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-yellow text-black font-sans text-[11px] font-bold uppercase tracking-wider">
-        {label}
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center px-3 py-1.5 rounded-full border border-white/10 bg-dark/30 text-white/55 font-sans text-[11px] font-bold uppercase tracking-wider">
-      {label}
-    </span>
   )
 }
 

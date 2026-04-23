@@ -36,6 +36,101 @@ export async function toggleFeature(
   }
 }
 
+function revalidateSubmissionViews() {
+  revalidatePath('/admin')
+  revalidatePath('/showcase')
+  revalidatePath('/leaderboard')
+}
+
+export async function setSubmissionVisibility(
+  submissionId: string,
+  isPublic: boolean
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await requireAdmin()
+    const admin = createAdminClient()
+    const update: { is_public: boolean; is_featured?: boolean } = {
+      is_public: isPublic,
+    }
+    // Hiding a submission also un-features it, so it can't linger on the showcase.
+    if (!isPublic) update.is_featured = false
+    const { error } = await admin
+      .from('submissions')
+      .update(update)
+      .eq('id', submissionId)
+    if (error) return { ok: false, error: error.message }
+    revalidateSubmissionViews()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unknown error' }
+  }
+}
+
+export async function setSubmissionsVisibility(
+  submissionIds: string[],
+  isPublic: boolean
+): Promise<
+  { ok: true; count: number } | { ok: false; error: string }
+> {
+  try {
+    await requireAdmin()
+    if (submissionIds.length === 0) return { ok: true, count: 0 }
+    const admin = createAdminClient()
+    const update: { is_public: boolean; is_featured?: boolean } = {
+      is_public: isPublic,
+    }
+    if (!isPublic) update.is_featured = false
+    const { error } = await admin
+      .from('submissions')
+      .update(update)
+      .in('id', submissionIds)
+    if (error) return { ok: false, error: error.message }
+    revalidateSubmissionViews()
+    return { ok: true, count: submissionIds.length }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unknown error' }
+  }
+}
+
+export async function deleteSubmission(
+  submissionId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await requireAdmin()
+    const admin = createAdminClient()
+    const { error } = await admin
+      .from('submissions')
+      .delete()
+      .eq('id', submissionId)
+    if (error) return { ok: false, error: error.message }
+    revalidateSubmissionViews()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unknown error' }
+  }
+}
+
+export async function deleteSubmissions(
+  submissionIds: string[]
+): Promise<
+  { ok: true; count: number } | { ok: false; error: string }
+> {
+  try {
+    await requireAdmin()
+    if (submissionIds.length === 0) return { ok: true, count: 0 }
+    const admin = createAdminClient()
+    const { error } = await admin
+      .from('submissions')
+      .delete()
+      .in('id', submissionIds)
+    if (error) return { ok: false, error: error.message }
+    revalidateSubmissionViews()
+    return { ok: true, count: submissionIds.length }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unknown error' }
+  }
+}
+
 export async function updateSession(
   sessionId: number,
   title: string,
