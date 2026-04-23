@@ -48,21 +48,28 @@ export default async function SessionPage({
     .order('submitted_at', { ascending: false })
     .limit(20)
 
-  // Like counts + current user's likes across peer submissions
+  // Like counts + current user's likes across peer submissions. Wrapped
+  // so a missing submission_likes table doesn't blow up the whole page.
   const peerIds = (peerSubmissions ?? []).map((p) => p.id)
   const peerLikeCount = new Map<string, number>()
   const peerLikedByMe = new Set<string>()
   if (peerIds.length > 0) {
-    const { data: likesData } = await supabase
-      .from('submission_likes')
-      .select('submission_id, user_id')
-      .in('submission_id', peerIds)
-    for (const l of likesData || []) {
-      peerLikeCount.set(
-        l.submission_id,
-        (peerLikeCount.get(l.submission_id) ?? 0) + 1
-      )
-      if (l.user_id === user.id) peerLikedByMe.add(l.submission_id)
+    try {
+      const { data: likesData, error: likesError } = await supabase
+        .from('submission_likes')
+        .select('submission_id, user_id')
+        .in('submission_id', peerIds)
+      if (!likesError && likesData) {
+        for (const l of likesData) {
+          peerLikeCount.set(
+            l.submission_id,
+            (peerLikeCount.get(l.submission_id) ?? 0) + 1
+          )
+          if (l.user_id === user.id) peerLikedByMe.add(l.submission_id)
+        }
+      }
+    } catch {
+      // Degrade to zero counts; peer cards still render without hearts.
     }
   }
 
