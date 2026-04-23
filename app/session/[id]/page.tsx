@@ -38,15 +38,32 @@ export default async function SessionPage({
     .eq('session_id', sessionId)
     .maybeSingle()
 
-  // Other people's public submissions for this session
+  // Other people's public submissions for this session. Fetch profiles
+  // in a second query instead of via a PostgREST embed — the embed
+  // sometimes silently returns zero rows when the schema cache hasn't
+  // caught up with a migration.
   const { data: peerSubmissions } = await supabase
     .from('submissions')
-    .select('*, profiles(name)')
+    .select('*')
     .eq('session_id', sessionId)
     .eq('is_public', true)
     .neq('user_id', user.id)
     .order('submitted_at', { ascending: false })
     .limit(20)
+
+  const peerUserIds = Array.from(
+    new Set((peerSubmissions ?? []).map((s) => s.user_id).filter(Boolean))
+  )
+  const peerNameByUserId = new Map<string, string | null>()
+  if (peerUserIds.length > 0) {
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, name')
+      .in('id', peerUserIds)
+    for (const p of profilesData || []) {
+      peerNameByUserId.set(p.id, p.name ?? null)
+    }
+  }
 
   // Like counts + current user's likes across peer submissions. Wrapped
   // so a missing submission_likes table doesn't blow up the whole page.
@@ -142,15 +159,11 @@ export default async function SessionPage({
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {peerSubmissions.map((sub) => {
-                // Supabase join returns profiles as object or array — normalize
-                const profile = Array.isArray(sub.profiles)
-                  ? sub.profiles[0]
-                  : sub.profiles
                 return (
                   <ProofCard
                     key={sub.id}
                     submission={sub as Submission}
-                    studentName={profile?.name || null}
+                    studentName={peerNameByUserId.get(sub.user_id) ?? null}
                     likeCount={peerLikeCount.get(sub.id) ?? 0}
                     likedByMe={peerLikedByMe.has(sub.id)}
                     canLike
