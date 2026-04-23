@@ -51,6 +51,12 @@ export function AdminHeader({
           })}
         </nav>
         <div className="flex items-center gap-3 shrink-0">
+          <Link
+            href="/dashboard"
+            className="font-sans text-[11px] font-bold uppercase tracking-[0.12em] text-white/60 hover:text-yellow transition border border-white/15 hover:border-yellow/50 rounded-full px-3 py-1.5"
+          >
+            ← Exit admin
+          </Link>
           <span className="hidden md:inline font-sans text-[11px] text-white/40 uppercase tracking-[0.12em]">
             Admin · {initials}
           </span>
