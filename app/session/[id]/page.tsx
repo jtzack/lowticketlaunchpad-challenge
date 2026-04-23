@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { BrandHeader } from '@/components/BrandHeader'
 import { ProofCard } from '@/components/ProofCard'
 import { SubmitForm } from './submit-form'
+import { MySubmissionCard } from './my-submission-card'
 import { getSessionByIdFromDb } from '@/lib/sessions'
 import type { Submission } from '@/lib/points'
 
@@ -83,44 +84,25 @@ export default async function SessionPage({
         </div>
 
         {/* Submission */}
-        {mySubmission ? (
-          <div className="mb-12">
-            <div className="border border-yellow/40 bg-yellow/[0.04] rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <span className="font-sans text-[11px] font-bold text-yellow uppercase tracking-wider">
-                  ✓ Submitted &middot; +{mySubmission.points_awarded} points
-                </span>
-                <span className="font-sans text-[12px] text-white/40">
-                  {new Date(mySubmission.submitted_at).toLocaleDateString()}
-                </span>
-              </div>
-              {mySubmission.proof_type === 'link' && mySubmission.proof_url && (
-                <a
-                  href={mySubmission.proof_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-sans text-[14px] text-blue hover:text-yellow underline break-all"
-                >
-                  {mySubmission.proof_url}
-                </a>
-              )}
-              {mySubmission.proof_type === 'text' && mySubmission.proof_text && (
-                <p className="font-sans text-[14px] text-white/70 whitespace-pre-wrap leading-relaxed">
-                  {mySubmission.proof_text}
-                </p>
-              )}
-              {mySubmission.notes && (
-                <p className="mt-4 pt-4 border-t border-white/10 font-sans text-[13px] text-white/50 italic">
-                  &ldquo;{mySubmission.notes}&rdquo;
-                </p>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="mb-12">
+        <div className="mb-12">
+          {mySubmission ? (
+            <MySubmissionCard
+              sessionId={sessionId}
+              userId={user.id}
+              submission={{
+                id: mySubmission.id,
+                proof_type: mySubmission.proof_type,
+                proof_url: mySubmission.proof_url,
+                proof_text: mySubmission.proof_text,
+                notes: mySubmission.notes,
+              }}
+              pointsAwarded={mySubmission.points_awarded}
+              submittedAt={mySubmission.submitted_at}
+            />
+          ) : (
             <SubmitForm sessionId={sessionId} userId={user.id} />
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Peer submissions */}
         {peerSubmissions && peerSubmissions.length > 0 && (
