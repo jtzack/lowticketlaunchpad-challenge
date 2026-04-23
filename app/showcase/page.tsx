@@ -47,10 +47,13 @@ export default async function ShowcasePage({
 
   // Filtered query for the grid. Fetch more than we display so the in-JS
   // sort by likes doesn't ignore older-but-popular posts outside a
-  // recency-limited window.
+  // recency-limited window. We fetch submissions and profiles as two
+  // separate queries (instead of a PostgREST resource embed) because
+  // embeds can silently return zero rows when PostgREST's schema cache
+  // hasn't caught up with a migration.
   let query = supabase
     .from('submissions')
-    .select('*, profiles(name)')
+    .select('*')
     .eq('is_public', true)
     .order('submitted_at', { ascending: false })
     .limit(200)
@@ -61,6 +64,21 @@ export default async function ShowcasePage({
 
   const { data: submissionsData } = await query
   const rawSubmissions = submissionsData || []
+
+  // Resolve student names for just the users in this page of submissions.
+  const userIds = Array.from(
+    new Set(rawSubmissions.map((s) => s.user_id).filter(Boolean))
+  )
+  const nameByUserId = new Map<string, string | null>()
+  if (userIds.length > 0) {
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, name')
+      .in('id', userIds)
+    for (const p of profilesData || []) {
+      nameByUserId.set(p.id, p.name ?? null)
+    }
+  }
 
   // Like counts for just these submissions (only signed-in users can like,
   // but counts are readable by everyone per RLS). Wrapped so a missing
@@ -165,15 +183,12 @@ export default async function ShowcasePage({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {submissions.map((sub) => {
-              const profile = Array.isArray(sub.profiles)
-                ? sub.profiles[0]
-                : sub.profiles
               const sessionInfo = sessionById.get(sub.session_id)
               return (
                 <ProofCard
                   key={sub.id}
                   submission={sub as Submission}
-                  studentName={profile?.name || null}
+                  studentName={nameByUserId.get(sub.user_id) ?? null}
                   showSession
                   featured={Boolean(sub.is_featured)}
                   session={
