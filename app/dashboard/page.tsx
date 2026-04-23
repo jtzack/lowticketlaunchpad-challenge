@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { BrandHeader } from '@/components/BrandHeader'
 import { SessionCard, type SessionStatus } from '@/components/SessionCard'
+import { InlineNameEdit } from './inline-name-edit'
 import { getSessionsFromDb } from '@/lib/sessions'
 import {
   computeStreak,
@@ -116,9 +117,7 @@ export default async function DashboardPage({
             <p className="font-sans text-[11px] font-bold text-blue uppercase tracking-[0.2em] mb-2">
               Welcome Back
             </p>
-            <h1 className="font-display text-[clamp(36px,5vw,56px)] text-white uppercase leading-[0.95] mb-3">
-              {displayName}
-            </h1>
+            <InlineNameEdit initialName={displayName} />
             <p className="font-sans text-[14px] text-white/65 leading-[1.5]">
               {nextTier
                 ? `You're a ${tier.name}. ${
