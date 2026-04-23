@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { isAdmin } from '@/lib/admin'
 
 type NavKey = 'dashboard' | 'showcase' | 'leaderboard' | 'rewards' | 'admin'
 
@@ -11,6 +12,12 @@ const NAV: NavItem[] = [
   { key: 'leaderboard', href: '/leaderboard', label: 'Leaderboard' },
   { key: 'rewards',     href: '/rewards',     label: 'Rewards' },
 ]
+
+const ADMIN_NAV: NavItem = {
+  key: 'admin',
+  href: '/admin',
+  label: 'Admin',
+}
 
 export async function BrandHeader({
   active,
@@ -26,6 +33,7 @@ export async function BrandHeader({
     data: { user },
   } = await supabase.auth.getUser()
   const isLoggedIn = Boolean(user)
+  const navItems = isAdmin(user?.email) ? [...NAV, ADMIN_NAV] : NAV
 
   return (
     <header className="border-b border-white/10 bg-black">
@@ -44,7 +52,7 @@ export async function BrandHeader({
         </Link>
         {isLoggedIn && (
           <nav className="flex items-center gap-5 md:gap-7">
-            {NAV.map((item) => {
+            {navItems.map((item) => {
               const on = active === item.key
               return (
                 <Link
