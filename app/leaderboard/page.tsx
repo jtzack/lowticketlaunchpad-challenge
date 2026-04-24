@@ -1,7 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { BrandHeader } from '@/components/BrandHeader'
 import { TierBadge } from '@/components/TierBadge'
-import { computeStreak, computeTotalPoints, type Submission } from '@/lib/points'
+import {
+  computeStreak,
+  computeTotalPoints,
+  getTiersFromDb,
+  type Submission,
+} from '@/lib/points'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +20,7 @@ type LeaderboardRow = {
 
 export default async function LeaderboardPage() {
   const supabase = await createClient()
+  const tiers = await getTiersFromDb(supabase)
 
   // Pull all public submissions and their authors' names as two queries
   // instead of a PostgREST resource embed — the embed has been flaky
@@ -139,7 +145,7 @@ export default async function LeaderboardPage() {
                         <span className="font-sans text-[14px] text-white">
                           {row.name || 'Anonymous'}
                         </span>
-                        <TierBadge points={row.total_points} />
+                        <TierBadge points={row.total_points} tiers={tiers} />
                       </div>
                     </td>
                     <td className="px-4 py-4 text-center hidden md:table-cell font-sans text-[13px] text-white/60">

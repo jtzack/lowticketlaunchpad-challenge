@@ -1,7 +1,13 @@
 import { getTier, type Tier } from '@/lib/points'
 
-export function TierBadge({ points }: { points: number }) {
-  const tier: Tier = getTier(points)
+export function TierBadge({
+  points,
+  tiers,
+}: {
+  points: number
+  tiers?: Tier[]
+}) {
+  const tier: Tier = getTier(points, tiers)
   return (
     <span
       className="inline-flex items-center gap-2 px-3 py-1 rounded-full font-sans text-[11px] font-bold uppercase tracking-wider"
