@@ -12,7 +12,6 @@ export const MIN_MULTIPLIER = 0.5
 export const DAILY_DECAY = 0.1
 
 export type ScoringInput = {
-  proofType: 'link' | 'text'
   hasUrl: boolean
   hasNotes: boolean
   submittedAt: Date | string
@@ -31,13 +30,16 @@ function toUtcDayNumber(d: Date): number {
   return Math.floor(d.getTime() / MS_PER_DAY)
 }
 
-function baseForProof(proofType: 'link' | 'text', hasUrl: boolean, hasNotes: boolean) {
-  if (proofType === 'link' && hasUrl) {
+function baseForProof(hasUrl: boolean, hasNotes: boolean) {
+  if (hasUrl) {
     return hasNotes
       ? { points: 100, reason: 'Link + notes' }
       : { points: 90, reason: 'Link only (add notes for +10)' }
   }
-  return { points: 80, reason: 'Text only (add a link for +10)' }
+  if (hasNotes) {
+    return { points: 80, reason: 'Notes only (add a link for +10)' }
+  }
+  return { points: 0, reason: 'Add a link or notes to submit' }
 }
 
 function asDate(value: Date | string): Date {
@@ -45,7 +47,7 @@ function asDate(value: Date | string): Date {
 }
 
 export function computePointsBreakdown(input: ScoringInput): ScoringBreakdown {
-  const base = baseForProof(input.proofType, input.hasUrl, input.hasNotes)
+  const base = baseForProof(input.hasUrl, input.hasNotes)
   let daysLate = 0
   if (input.dueAt) {
     const due = asDate(input.dueAt)

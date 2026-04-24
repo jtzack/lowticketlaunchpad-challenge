@@ -14,6 +14,27 @@ export type SubmissionDraft = {
   submitted_at?: string
 }
 
+// A "link" submission stores the URL in proof_url and free-form context in
+// notes. A "text" submission stores the student's writeup in proof_text
+// (notes is null). The edit form collapses both shapes into a single
+// url + notes view; on save the server re-derives which columns to fill.
+function draftToFields(draft: SubmissionDraft | undefined): {
+  url: string
+  notes: string
+} {
+  if (!draft) return { url: '', notes: '' }
+  if (draft.proof_type === 'link') {
+    return {
+      url: draft.proof_url ?? '',
+      notes: draft.notes ?? '',
+    }
+  }
+  return {
+    url: '',
+    notes: draft.proof_text ?? draft.notes ?? '',
+  }
+}
+
 export function SubmitForm({
   sessionId,
   userId: _userId,
@@ -31,40 +52,42 @@ export function SubmitForm({
 }) {
   const router = useRouter()
   const isEdit = Boolean(existing)
-  const [proofType, setProofType] = useState<'link' | 'text'>(
-    existing?.proof_type ?? 'link'
-  )
-  const [proofUrl, setProofUrl] = useState(existing?.proof_url ?? '')
-  const [proofText, setProofText] = useState(existing?.proof_text ?? '')
-  const [notes, setNotes] = useState(existing?.notes ?? '')
+  const initialFields = draftToFields(existing)
+  const [url, setUrl] = useState(initialFields.url)
+  const [notes, setNotes] = useState(initialFields.notes)
   const [error, setError] = useState('')
   const [pending, startTransition] = useTransition()
 
-  // Use the original submitted_at for edits so a tiny edit doesn't
-  // suddenly push points up or down; new submissions score against now.
+  // Edits keep the original submitted_at for scoring so a typo fix doesn't
+  // change the lateness penalty; new submissions score against now.
   const effectiveSubmittedAt = existing?.submitted_at ?? new Date().toISOString()
+
+  const hasUrl = Boolean(url.trim())
+  const hasNotes = Boolean(notes.trim())
+  const canSubmit = hasUrl || hasNotes
 
   const breakdown = useMemo(
     () =>
       computePointsBreakdown({
-        proofType,
-        hasUrl: Boolean(proofUrl.trim()),
-        hasNotes: Boolean(notes.trim()),
+        hasUrl,
+        hasNotes,
         submittedAt: effectiveSubmittedAt,
         dueAt,
       }),
-    [proofType, proofUrl, notes, dueAt, effectiveSubmittedAt]
+    [hasUrl, hasNotes, dueAt, effectiveSubmittedAt]
   )
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    if (!canSubmit) {
+      setError('Add a link or notes before submitting.')
+      return
+    }
 
     const payload = {
-      proofType,
-      proofUrl: proofType === 'link' ? proofUrl : null,
-      proofText: proofType === 'text' ? proofText : null,
-      notes: notes || null,
+      url: hasUrl ? url : null,
+      notes: hasNotes ? notes : null,
     }
 
     startTransition(async () => {
@@ -93,64 +116,39 @@ export function SubmitForm({
       onSubmit={handleSubmit}
       className="border border-blue/30 bg-blue/[0.04] rounded-lg p-6"
     >
-      <p className="font-sans text-[11px] font-bold text-blue uppercase tracking-[0.2em] mb-4">
+      <p className="font-sans text-[11px] font-bold text-blue uppercase tracking-[0.2em] mb-2">
         {isEdit ? 'Edit Your Submission' : 'Submit Your Proof'}
       </p>
+      <p className="font-sans text-[13px] text-white/55 leading-[1.5] mb-5">
+        Fill in either field (or both). A link + notes earns the most points.
+      </p>
 
-      {/* Type toggle */}
-      <div className="flex gap-2 mb-5">
-        <button
-          type="button"
-          onClick={() => setProofType('link')}
-          className={`flex-1 py-2.5 px-4 rounded-md font-sans text-[13px] font-bold uppercase tracking-wider transition ${
-            proofType === 'link'
-              ? 'bg-yellow text-black'
-              : 'bg-white/5 text-white/60 hover:bg-white/10'
-          }`}
-        >
-          Link
-        </button>
-        <button
-          type="button"
-          onClick={() => setProofType('text')}
-          className={`flex-1 py-2.5 px-4 rounded-md font-sans text-[13px] font-bold uppercase tracking-wider transition ${
-            proofType === 'text'
-              ? 'bg-yellow text-black'
-              : 'bg-white/5 text-white/60 hover:bg-white/10'
-          }`}
-        >
-          Text
-        </button>
-      </div>
-
-      {/* Input */}
-      {proofType === 'link' ? (
-        <input
-          type="url"
-          required
-          value={proofUrl}
-          onChange={(e) => setProofUrl(e.target.value)}
-          placeholder="https://example.com/your-product"
-          className="w-full bg-black border border-white/20 rounded-md px-4 py-3 font-sans text-[14px] text-white placeholder:text-white/30 focus:border-blue focus:outline-none mb-4"
-        />
-      ) : (
-        <textarea
-          required
-          value={proofText}
-          onChange={(e) => setProofText(e.target.value)}
-          placeholder="Paste your outline, copy, or proof here…"
-          rows={6}
-          className="w-full bg-black border border-white/20 rounded-md px-4 py-3 font-sans text-[14px] text-white placeholder:text-white/30 focus:border-blue focus:outline-none mb-4 resize-y"
-        />
-      )}
-
-      {/* Notes (optional) */}
+      {/* Link */}
+      <label className="block font-mono text-[10px] text-white/50 tracking-[0.14em] mb-1.5 uppercase">
+        Link to your work{' '}
+        <span className="text-white/30 normal-case tracking-normal">(optional)</span>
+      </label>
       <input
-        type="text"
+        type="url"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        placeholder="https://example.com/your-product"
+        className="w-full bg-black border border-white/20 rounded-md px-4 py-3 font-sans text-[14px] text-white placeholder:text-white/30 focus:border-blue focus:outline-none mb-4"
+      />
+
+      {/* Notes */}
+      <label className="block font-mono text-[10px] text-white/50 tracking-[0.14em] mb-1.5 uppercase">
+        Notes{' '}
+        <span className="text-white/30 normal-case tracking-normal">
+          (optional — context, or your answer if you don&apos;t have a link)
+        </span>
+      </label>
+      <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        placeholder="Notes (optional) — what's the context?"
-        className="w-full bg-black border border-white/20 rounded-md px-4 py-3 font-sans text-[13px] text-white placeholder:text-white/30 focus:border-blue focus:outline-none mb-4"
+        placeholder="What did you build? What did you learn?"
+        rows={5}
+        className="w-full bg-black border border-white/20 rounded-md px-4 py-3 font-sans text-[14px] text-white placeholder:text-white/30 focus:border-blue focus:outline-none mb-4 resize-y"
       />
 
       {/* Points preview */}
@@ -164,7 +162,7 @@ export function SubmitForm({
           </span>
         </div>
         <div className="font-sans text-[12px] text-white/55 mt-1.5">
-          {breakdown.base} base ({breakdown.baseReason})
+          {breakdown.baseReason}
           {breakdown.daysLate > 0 && (
             <>
               {' · '}
@@ -181,8 +179,8 @@ export function SubmitForm({
       <div className={isEdit ? 'flex gap-2' : ''}>
         <button
           type="submit"
-          disabled={pending}
-          className="flex-1 bg-yellow text-black font-sans text-[14px] font-bold uppercase tracking-[0.08em] py-3.5 rounded-md hover:bg-yellow/90 transition disabled:opacity-50"
+          disabled={pending || !canSubmit}
+          className="flex-1 bg-yellow text-black font-sans text-[14px] font-bold uppercase tracking-[0.08em] py-3.5 rounded-md hover:bg-yellow/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {pending
             ? isEdit
