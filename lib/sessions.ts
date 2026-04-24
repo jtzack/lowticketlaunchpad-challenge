@@ -127,3 +127,25 @@ export async function getSessionByIdFromDb(
   const merged = await getSessionsFromDb(supabase)
   return merged.find((s) => s.id === id)
 }
+
+// A session unlocks on the previous session's due date. Session 1 is always
+// open (no predecessor). Returns null when there's nothing to wait on —
+// either session 1 or the previous session has no due_at set.
+export function computeOpensAt(
+  sessionId: number,
+  sessions: SessionInfo[]
+): Date | null {
+  const prev = sessions.find((s) => s.id === sessionId - 1)
+  if (!prev?.due_at) return null
+  const d = new Date(prev.due_at)
+  return Number.isNaN(d.getTime()) ? null : d
+}
+
+export function isSessionOpen(
+  sessionId: number,
+  sessions: SessionInfo[],
+  now: Date = new Date()
+): boolean {
+  const opensAt = computeOpensAt(sessionId, sessions)
+  return !opensAt || now.getTime() >= opensAt.getTime()
+}

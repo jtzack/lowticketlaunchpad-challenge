@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { SessionInfo } from '@/lib/sessions'
 
-export type SessionStatus = 'locked' | 'active' | 'submitted'
+export type SessionStatus = 'upcoming' | 'active' | 'submitted'
 
 const OVERDUE_GRACE_DAYS = 2
 const MS_PER_DAY = 24 * 60 * 60 * 1000
@@ -9,7 +9,7 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000
 // Dates are stored and rendered in UTC so the calendar date the admin
 // sets in the admin UI is exactly the date every student sees, no matter
 // which timezone either of them is in.
-function formatDueDate(iso: string): string {
+function formatDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   return d.toLocaleDateString('en-US', {
@@ -27,12 +27,14 @@ export function SessionCard({
   session,
   status,
   dueAt,
+  opensAt,
 }: {
   session: SessionInfo
   status: SessionStatus
   dueAt?: string | null
+  opensAt?: string | null
 }) {
-  const isLocked = status === 'locked'
+  const isUpcoming = status === 'upcoming'
   const isSubmitted = status === 'submitted'
   const isActive = status === 'active'
 
@@ -66,7 +68,7 @@ export function SessionCard({
   const inner = (
     <div
       className={`relative h-full rounded-lg border ${borderColor} ${bgColor} p-5 transition hover:border-white/30 ${
-        isLocked && !isOverdue ? 'opacity-50' : ''
+        isUpcoming ? 'opacity-60' : ''
       }`}
     >
       {/* Status indicator */}
@@ -86,9 +88,9 @@ export function SessionCard({
             Active
           </span>
         )}
-        {!isSubmitted && !isOverdue && isLocked && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-white/30 font-sans text-[9px] font-bold uppercase tracking-wider">
-            Locked
+        {!isSubmitted && !isOverdue && isUpcoming && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/5 text-white/40 font-sans text-[9px] font-bold uppercase tracking-wider">
+            {opensAt ? `Opens ${formatDate(opensAt)}` : 'Upcoming'}
           </span>
         )}
       </div>
@@ -114,14 +116,14 @@ export function SessionCard({
           }`}
         >
           {isOverdue
-            ? `Overdue by ${daysPastDue} day${daysPastDue === 1 ? '' : 's'} · Due ${formatDueDate(dueAt!)}`
-            : `Due ${formatDueDate(dueAt!)}`}
+            ? `Overdue by ${daysPastDue} day${daysPastDue === 1 ? '' : 's'} · Due ${formatDate(dueAt!)}`
+            : `Due ${formatDate(dueAt!)}`}
         </p>
       )}
     </div>
   )
 
-  if (isLocked) return <div>{inner}</div>
+  if (isUpcoming) return <div>{inner}</div>
 
   return (
     <Link href={`/session/${session.id}`} className="block h-full">
