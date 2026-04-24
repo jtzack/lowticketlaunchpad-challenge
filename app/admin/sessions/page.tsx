@@ -13,7 +13,6 @@ type SessionRowData = {
   title: string
   description: string
   due_at: string | null
-  opens_at: string | null
 }
 
 export default async function AdminSessionsPage() {
@@ -27,7 +26,7 @@ export default async function AdminSessionsPage() {
 
   const { data: sessionsData } = await supabase
     .from('sessions')
-    .select('id, number, title, description, due_at, opens_at')
+    .select('id, number, title, description, due_at')
     .order('id', { ascending: true })
 
   // Fall back to hardcoded metadata if the DB hasn't been updated yet.
@@ -40,10 +39,19 @@ export default async function AdminSessionsPage() {
           title: s.title,
           description: s.description,
           due_at: null,
-          opens_at: null,
         }))
 
   const now = Date.now()
+
+  // A session opens on the previous session's due date. Session 1 (no
+  // predecessor) is always open. Drives live/upcoming/closed states on
+  // both the timeline bubbles and the edit rows below.
+  function opensAtFor(sessionId: number): number | null {
+    const prev = rows.find((r) => r.id === sessionId - 1)
+    if (!prev?.due_at) return null
+    const t = new Date(prev.due_at).getTime()
+    return Number.isNaN(t) ? null : t
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-black">
@@ -78,13 +86,11 @@ export default async function AdminSessionsPage() {
             <div className="grid grid-cols-6">
               {rows.map((r) => {
                 const due = r.due_at ? new Date(r.due_at).getTime() : null
-                const opens = r.opens_at ? new Date(r.opens_at).getTime() : null
+                const opens = opensAtFor(r.id)
                 const closed = due !== null && due < now
-                const live =
-                  !closed &&
-                  opens !== null &&
-                  opens <= now &&
-                  (due === null || due >= now)
+                // Session is "live" when its unlock has passed (or it has
+                // no predecessor → always open) and it isn't closed yet.
+                const live = !closed && (opens === null || opens <= now)
                 const color = closed
                   ? '#F9E35D'
                   : live
@@ -120,16 +126,12 @@ export default async function AdminSessionsPage() {
         <div className="grid gap-3">
           {rows.map((r) => {
             const due = r.due_at ? new Date(r.due_at).getTime() : null
-            const opens = r.opens_at ? new Date(r.opens_at).getTime() : null
+            const opens = opensAtFor(r.id)
             const closed = due !== null && due < now
-            const live =
-              !closed &&
-              opens !== null &&
-              opens <= now &&
-              (due === null || due >= now)
+            const live = !closed && (opens === null || opens <= now)
             const status = closed ? 'closed' : live ? 'live' : 'upcoming'
-            const opensLabel = r.opens_at
-              ? new Date(r.opens_at).toLocaleDateString('en-US', {
+            const opensLabel = opens
+              ? new Date(opens).toLocaleDateString('en-US', {
                   month: 'short',
                   day: 'numeric',
                   timeZone: 'UTC',
