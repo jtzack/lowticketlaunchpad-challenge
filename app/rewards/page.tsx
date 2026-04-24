@@ -229,7 +229,12 @@ function RewardCard({
             <div className="font-mono text-[10px] text-white/40 uppercase tracking-[0.14em]">
               Reward {String(reward.id).padStart(2, '0')} · {tag}
             </div>
-            <h3 className="font-display text-[19px] text-white uppercase leading-tight mt-0.5">
+            <h3
+              className={`font-display text-[19px] text-white uppercase leading-tight mt-0.5 transition ${
+                status === 'locked' ? 'blur-[6px] select-none' : ''
+              }`}
+              aria-hidden={status === 'locked'}
+            >
               {reward.title}
             </h3>
           </div>
@@ -238,7 +243,12 @@ function RewardCard({
       </div>
 
       {reward.description && (
-        <p className="font-sans text-[13px] text-white/60 leading-[1.5] mb-4 flex-1">
+        <p
+          className={`font-sans text-[13px] text-white/60 leading-[1.5] mb-4 flex-1 transition ${
+            status === 'locked' ? 'blur-[5px] select-none' : ''
+          }`}
+          aria-hidden={status === 'locked'}
+        >
           {reward.description}
         </p>
       )}
