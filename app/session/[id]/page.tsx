@@ -109,7 +109,7 @@ export default async function SessionPage({
         </Link>
 
         {/* Session header */}
-        <div className="mb-10">
+        <div className="mb-6">
           <p className="font-sans text-[11px] font-bold text-blue uppercase tracking-[0.2em] mb-3">
             Session {session.number}
           </p>
@@ -120,6 +120,9 @@ export default async function SessionPage({
             {session.description}
           </p>
         </div>
+
+        {/* Open session button */}
+        <OpenSessionButton url={session.session_url ?? null} />
 
         {/* Homework prompt */}
         <div className="border-l-4 border-yellow pl-5 mb-10">
@@ -189,6 +192,33 @@ export default async function SessionPage({
         </p>
       </footer>
     </div>
+  )
+}
+
+function OpenSessionButton({ url }: { url: string | null }) {
+  const base =
+    'inline-flex items-center gap-2 px-5 py-3 rounded-md font-sans text-[13px] font-bold uppercase tracking-[0.1em] mb-10 transition'
+  if (!url) {
+    return (
+      <button
+        type="button"
+        disabled
+        title="Session link not available yet"
+        className={`${base} bg-white/5 border border-white/10 text-white/35 cursor-not-allowed`}
+      >
+        Open session ↗
+      </button>
+    )
+  }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`${base} bg-blue text-black hover:bg-blue/90`}
+    >
+      Open session ↗
+    </a>
   )
 }
 

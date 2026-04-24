@@ -12,6 +12,7 @@ export type SessionInfo = {
   points_value: number
   due_at?: string | null
   opens_at?: string | null
+  session_url?: string | null
 }
 
 // Short tag shown on chips/cards — VALIDATE, BUILD, SHIP, OFFER, OUTLINE, LAUNCH
@@ -100,7 +101,7 @@ export async function getSessionsFromDb(
   const { data } = await supabase
     .from('sessions')
     .select(
-      'id, title, description, homework_prompt, due_at, opens_at, points_value'
+      'id, title, description, homework_prompt, due_at, opens_at, points_value, session_url'
     )
     .order('id', { ascending: true })
 
@@ -116,6 +117,7 @@ export async function getSessionsFromDb(
       points_value: row.points_value ?? s.points_value,
       due_at: row.due_at ?? null,
       opens_at: row.opens_at ?? null,
+      session_url: row.session_url ?? null,
     }
   })
 }

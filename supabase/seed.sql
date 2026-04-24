@@ -26,6 +26,7 @@ create table if not exists public.sessions (
 -- Add columns if missing (for existing installs)
 alter table public.sessions add column if not exists due_at timestamptz;
 alter table public.sessions add column if not exists opens_at timestamptz;
+alter table public.sessions add column if not exists session_url text;
 
 -- ─── Submissions ───
 create table if not exists public.submissions (

@@ -12,6 +12,8 @@ type SessionRowData = {
   number: number
   title: string
   description: string
+  homework_prompt: string | null
+  session_url: string | null
   due_at: string | null
 }
 
@@ -26,7 +28,9 @@ export default async function AdminSessionsPage() {
 
   const { data: sessionsData } = await supabase
     .from('sessions')
-    .select('id, number, title, description, due_at')
+    .select(
+      'id, number, title, description, homework_prompt, session_url, due_at'
+    )
     .order('id', { ascending: true })
 
   // Fall back to hardcoded metadata if the DB hasn't been updated yet.
@@ -38,6 +42,8 @@ export default async function AdminSessionsPage() {
           number: s.number,
           title: s.title,
           description: s.description,
+          homework_prompt: s.homework_prompt,
+          session_url: null,
           due_at: null,
         }))
 
@@ -144,6 +150,8 @@ export default async function AdminSessionsPage() {
                 number={r.number}
                 initialTitle={r.title}
                 initialDescription={r.description || ''}
+                initialHomework={r.homework_prompt || ''}
+                initialSessionUrl={r.session_url || ''}
                 initialDueAt={r.due_at}
                 status={status}
                 opensLabel={opensLabel}
