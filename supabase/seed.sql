@@ -228,12 +228,7 @@ insert into public.sessions (id, number, title, description, homework_prompt, po
    'Build the system that keeps your products selling long after launch day.',
    'Submit your evergreen marketing strategy and revenue tracking setup. Include your traffic plan, email opt-in flow, and KPI tracking sheet.',
    100, '2026-05-07 23:59:00-04', '2026-05-06 00:00:00-04')
-on conflict (id) do update
-  set title = excluded.title,
-      description = excluded.description,
-      homework_prompt = excluded.homework_prompt,
-      due_at = coalesce(public.sessions.due_at, excluded.due_at),
-      opens_at = coalesce(public.sessions.opens_at, excluded.opens_at);
+on conflict (id) do nothing;
 
 -- ═══════════════════════════════════════════════════════════
 -- Seed: 6 Rewards (one per session)
