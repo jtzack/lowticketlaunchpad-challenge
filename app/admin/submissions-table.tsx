@@ -25,6 +25,8 @@ export type AdminSubmission = {
   student_email: string | null
 }
 
+type Filter = 'all' | 'featured' | 'hidden' | `session-${number}`
+
 export function SubmissionsTable({
   initial,
 }: {
@@ -32,18 +34,38 @@ export function SubmissionsTable({
 }) {
   const [rows, setRows] = useState<AdminSubmission[]>(initial)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [filter, setFilter] = useState<Filter>('all')
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-
-  const allIds = useMemo(() => rows.map((r) => r.id), [rows])
-  const allSelected = rows.length > 0 && selected.size === rows.length
-  const someSelected = selected.size > 0 && !allSelected
 
   const featuredCount = rows.filter((r) => r.is_featured).length
   const hiddenCount = rows.filter((r) => !r.is_public).length
   const countsBySession: Record<number, number> = {}
   for (const r of rows) {
     countsBySession[r.session_id] = (countsBySession[r.session_id] || 0) + 1
+  }
+
+  const visibleRows = useMemo(() => {
+    if (filter === 'all') return rows
+    if (filter === 'featured') return rows.filter((r) => r.is_featured)
+    if (filter === 'hidden') return rows.filter((r) => !r.is_public)
+    const m = filter.match(/^session-(\d+)$/)
+    if (m) {
+      const sid = parseInt(m[1], 10)
+      return rows.filter((r) => r.session_id === sid)
+    }
+    return rows
+  }, [rows, filter])
+
+  const visibleIds = useMemo(() => visibleRows.map((r) => r.id), [visibleRows])
+  const allSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selected.has(id))
+  const someSelected =
+    visibleIds.some((id) => selected.has(id)) && !allSelected
+
+  function changeFilter(next: Filter) {
+    setFilter(next)
+    setSelected(new Set())
   }
 
   function toggleOne(id: string) {
@@ -56,8 +78,22 @@ export function SubmissionsTable({
   }
 
   function toggleAll() {
-    if (allSelected) setSelected(new Set())
-    else setSelected(new Set(allIds))
+    if (allSelected) {
+      // Deselect only the currently-visible rows; leave any other
+      // selections untouched (defensive — we also reset selection on
+      // filter changes so this should be rare).
+      setSelected((prev) => {
+        const next = new Set(prev)
+        for (const id of visibleIds) next.delete(id)
+        return next
+      })
+    } else {
+      setSelected((prev) => {
+        const next = new Set(prev)
+        for (const id of visibleIds) next.add(id)
+        return next
+      })
+    }
   }
 
   function clearSelection() {
@@ -131,16 +167,30 @@ export function SubmissionsTable({
 
   return (
     <div>
-      {/* Stat chips */}
+      {/* Filter chips */}
       <div className="flex flex-wrap items-center gap-2 mb-5">
-        <Chip label={`ALL · ${rows.length}`} accent="yellow" />
-        <Chip label={`★ FEATURED · ${featuredCount}`} />
-        <Chip label={`HIDDEN · ${hiddenCount}`} />
+        <Chip
+          label={`ALL · ${rows.length}`}
+          active={filter === 'all'}
+          onClick={() => changeFilter('all')}
+        />
+        <Chip
+          label={`★ FEATURED · ${featuredCount}`}
+          active={filter === 'featured'}
+          onClick={() => changeFilter('featured')}
+        />
+        <Chip
+          label={`HIDDEN · ${hiddenCount}`}
+          active={filter === 'hidden'}
+          onClick={() => changeFilter('hidden')}
+        />
         <span className="w-px h-5 bg-white/10 mx-1" />
         {SESSIONS.map((s) => (
           <Chip
             key={s.id}
             label={`S0${s.number} · ${countsBySession[s.id] || 0}`}
+            active={filter === `session-${s.id}`}
+            onClick={() => changeFilter(`session-${s.id}`)}
           />
         ))}
       </div>
@@ -233,12 +283,14 @@ export function SubmissionsTable({
           <span className="text-right">Actions</span>
         </div>
 
-        {rows.length === 0 ? (
+        {visibleRows.length === 0 ? (
           <div className="px-5 py-12 text-center font-sans text-[14px] text-white/40">
-            No submissions yet.
+            {rows.length === 0
+              ? 'No submissions yet.'
+              : 'No submissions match this filter.'}
           </div>
         ) : (
-          rows.map((sub) => {
+          visibleRows.map((sub) => {
             const initials = (sub.student_name || sub.student_email || '—')
               .split(/[\s@]+/)
               .map((s: string) => s[0])
@@ -404,17 +456,23 @@ function BulkButton({
   )
 }
 
-function Chip({ label, accent }: { label: string; accent?: 'yellow' }) {
-  if (accent === 'yellow') {
-    return (
-      <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-yellow text-black font-sans text-[11px] font-bold uppercase tracking-wider">
-        {label}
-      </span>
-    )
-  }
+function Chip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string
+  active?: boolean
+  onClick?: () => void
+}) {
+  const base =
+    'inline-flex items-center px-3 py-1.5 rounded-full font-sans text-[11px] font-bold uppercase tracking-wider transition'
+  const classes = active
+    ? `${base} bg-yellow text-black border border-yellow`
+    : `${base} border border-white/10 bg-dark/30 text-white/55 hover:text-yellow hover:border-white/30`
   return (
-    <span className="inline-flex items-center px-3 py-1.5 rounded-full border border-white/10 bg-dark/30 text-white/55 font-sans text-[11px] font-bold uppercase tracking-wider">
+    <button type="button" onClick={onClick} className={classes}>
       {label}
-    </span>
+    </button>
   )
 }
