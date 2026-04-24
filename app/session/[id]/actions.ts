@@ -73,6 +73,33 @@ export async function submitProof(
     }
 
     const { supabase, user } = await getUserOrFail()
+
+    // Gate: a session unlocks on the previous session's due date. Session
+    // 1 is always open. This server-side check is the source of truth —
+    // the UI also hides the form, but a direct action call needs to be
+    // rejected here too.
+    if (sessionId > 1) {
+      const { data: prev } = await supabase
+        .from('sessions')
+        .select('due_at')
+        .eq('id', sessionId - 1)
+        .maybeSingle()
+      if (prev?.due_at) {
+        const opensAt = new Date(prev.due_at)
+        if (!Number.isNaN(opensAt.getTime()) && Date.now() < opensAt.getTime()) {
+          const when = opensAt.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            timeZone: 'UTC',
+          })
+          return {
+            ok: false,
+            error: `Session ${sessionId} opens ${when}.`,
+          }
+        }
+      }
+    }
+
     const submittedAt = new Date().toISOString()
     const pointsAwarded = await scoreAgainstSession(
       supabase,

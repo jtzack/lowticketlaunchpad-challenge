@@ -5,7 +5,7 @@ import { BrandHeader } from '@/components/BrandHeader'
 import { ProofCard } from '@/components/ProofCard'
 import { SubmitForm } from './submit-form'
 import { MySubmissionCard } from './my-submission-card'
-import { getSessionByIdFromDb } from '@/lib/sessions'
+import { computeOpensAt, getSessionsFromDb } from '@/lib/sessions'
 import type { Submission } from '@/lib/points'
 
 export const dynamic = 'force-dynamic'
@@ -20,7 +20,8 @@ export default async function SessionPage({
   if (Number.isNaN(sessionId)) notFound()
 
   const supabase = await createClient()
-  const session = await getSessionByIdFromDb(supabase, sessionId)
+  const allSessions = await getSessionsFromDb(supabase)
+  const session = allSessions.find((s) => s.id === sessionId)
   if (!session) notFound()
   const {
     data: { user },
@@ -29,6 +30,11 @@ export default async function SessionPage({
   if (!user) {
     redirect('/')
   }
+
+  // Is this session open yet? Session 1 always is; others unlock on the
+  // previous session's due date.
+  const opensAt = computeOpensAt(sessionId, allSessions)
+  const isOpen = !opensAt || Date.now() >= opensAt.getTime()
 
   // Has the current user already submitted?
   const { data: mySubmission } = await supabase
@@ -142,12 +148,14 @@ export default async function SessionPage({
               pointsAwarded={mySubmission.points_awarded}
               submittedAt={mySubmission.submitted_at}
             />
-          ) : (
+          ) : isOpen ? (
             <SubmitForm
               sessionId={sessionId}
               userId={user.id}
               dueAt={session.due_at ?? null}
             />
+          ) : (
+            <NotOpenYet opensAt={opensAt!} sessionNumber={session.number} />
           )}
         </div>
 
@@ -180,6 +188,34 @@ export default async function SessionPage({
           &copy; 2026 Low-Ticket Launchpad. All rights reserved.
         </p>
       </footer>
+    </div>
+  )
+}
+
+function NotOpenYet({
+  opensAt,
+  sessionNumber,
+}: {
+  opensAt: Date
+  sessionNumber: number
+}) {
+  const when = opensAt.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
+  return (
+    <div className="border border-white/15 bg-dark/40 rounded-lg p-6">
+      <p className="font-sans text-[11px] font-bold text-white/55 uppercase tracking-[0.2em] mb-3">
+        Not Open Yet
+      </p>
+      <h2 className="font-display text-[clamp(20px,2.2vw,26px)] text-white uppercase leading-tight mb-2">
+        Session {sessionNumber} opens {when}.
+      </h2>
+      <p className="font-sans text-[13px] text-white/55 leading-[1.5]">
+        Read the prompt now — you can submit once the session opens. In the
+        meantime, finish anything still on deck for earlier sessions.
+      </p>
     </div>
   )
 }

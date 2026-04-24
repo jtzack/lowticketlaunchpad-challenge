@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { BrandHeader } from '@/components/BrandHeader'
 import { SessionCard, type SessionStatus } from '@/components/SessionCard'
 import { InlineNameEdit } from './inline-name-edit'
-import { getSessionsFromDb } from '@/lib/sessions'
+import { computeOpensAt, getSessionsFromDb } from '@/lib/sessions'
 import {
   computeStreak,
   computeTotalPoints,
@@ -72,16 +72,31 @@ export default async function DashboardPage({
   )
 
   // Determine status for each session: submitted | active | locked
-  // Logic: a session is "active" if it's the lowest unsubmitted session.
-  // Everything before the lowest unsubmitted is submitted, everything after is locked.
-  const lowestUnsubmitted = sessions.find((s) => !completedSet.has(s.id))?.id
-  const nextSession =
-    sessions.find((s) => s.id === lowestUnsubmitted) ?? null
+  // A session is 'active' once its unlock date (the previous session's due
+  // date) has passed. Sessions whose unlock date is still in the future are
+  // 'upcoming' — visible on the dashboard with an "Opens <date>" badge but
+  // not submittable. Session 1 is always open.
+  const now = new Date()
+  const opensAtById = new Map<number, Date | null>(
+    sessions.map((s) => [s.id, computeOpensAt(s.id, sessions)])
+  )
+  function isOpen(sessionId: number): boolean {
+    const opensAt = opensAtById.get(sessionId)
+    return !opensAt || now.getTime() >= opensAt.getTime()
+  }
   function getStatus(sessionId: number): SessionStatus {
     if (completedSet.has(sessionId)) return 'submitted'
-    if (sessionId === lowestUnsubmitted) return 'active'
-    return 'locked'
+    if (!isOpen(sessionId)) return 'upcoming'
+    return 'active'
   }
+  // For the Next Up CTA: prefer the lowest open-and-unsubmitted session.
+  // Falls back to the lowest unsubmitted so we can show "Opens <date>" when
+  // the student is all caught up.
+  const nextOpen =
+    sessions.find((s) => !completedSet.has(s.id) && isOpen(s.id)) ?? null
+  const nextUnsubmitted =
+    sessions.find((s) => !completedSet.has(s.id)) ?? null
+  const nextSession = nextOpen ?? nextUnsubmitted
 
   const initials = displayName
     .split(' ')
@@ -152,6 +167,11 @@ export default async function DashboardPage({
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
           <NextUpCard
             nextSession={nextSession}
+            opensAt={
+              nextSession
+                ? opensAtById.get(nextSession.id)?.toISOString() ?? null
+                : null
+            }
             completed={submissions.length === sessions.length}
           />
           <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
@@ -172,6 +192,9 @@ export default async function DashboardPage({
                 session={session}
                 status={getStatus(session.id)}
                 dueAt={session.due_at ?? null}
+                opensAt={
+                  opensAtById.get(session.id)?.toISOString() ?? null
+                }
               />
             ))}
           </div>
@@ -298,8 +321,17 @@ function StatBlock({ label, value }: { label: string; value: string }) {
   )
 }
 
+function formatCalendarDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
 function NextUpCard({
   nextSession,
+  opensAt,
   completed,
 }: {
   nextSession: {
@@ -308,6 +340,7 @@ function NextUpCard({
     title: string
     due_at?: string | null
   } | null
+  opensAt: string | null
   completed: boolean
 }) {
   if (completed || !nextSession) {
@@ -327,13 +360,30 @@ function NextUpCard({
     )
   }
 
-  const dueLabel = nextSession.due_at
-    ? new Date(nextSession.due_at).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        timeZone: 'UTC',
-      })
-    : null
+  const dueLabel = nextSession.due_at ? formatCalendarDate(nextSession.due_at) : null
+  const isUpcoming =
+    opensAt !== null && Date.now() < new Date(opensAt).getTime()
+
+  // Student is caught up and the next session hasn't opened yet.
+  if (isUpcoming && opensAt) {
+    return (
+      <div className="md:col-span-2 rounded-lg border border-white/15 bg-dark/40 p-6 flex flex-col justify-between gap-4">
+        <div>
+          <p className="font-sans text-[11px] font-bold text-white/55 uppercase tracking-[0.18em] mb-2">
+            Next Up · Session {nextSession.number}
+          </p>
+          <h2 className="font-display text-[clamp(22px,2.5vw,28px)] text-white uppercase leading-tight mb-2 opacity-80">
+            {nextSession.title}
+          </h2>
+          <p className="font-sans text-[13px] text-white/55 leading-[1.5]">
+            You're caught up. Session {nextSession.number} opens{' '}
+            <span className="text-yellow">{formatCalendarDate(opensAt)}</span>
+            {dueLabel ? ` (due ${dueLabel})` : ''}. Come back then.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <Link
