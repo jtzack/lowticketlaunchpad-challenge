@@ -135,7 +135,8 @@ export function CelebrateModal({
 
         <p className="font-sans text-[14px] text-white/60 leading-[1.55] mt-3 max-w-[380px] mx-auto">
           You&apos;re on a <span className="text-blue">{streak}× streak</span>{' '}
-          now. {currentTier} tier reward unlocked.
+          and now a <span className="text-yellow">{currentTier}</span>. Keep
+          shipping.
         </p>
 
         <p className="font-mono text-[10px] text-white/45 tracking-[0.18em] uppercase mt-5">

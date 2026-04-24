@@ -7,7 +7,6 @@ export type TierEdit = {
   rank: number
   name: string
   min: number
-  unlock: string
 }
 
 export function TiersForm({ initial }: { initial: TierEdit[] }) {
@@ -74,8 +73,7 @@ export function TiersForm({ initial }: { initial: TierEdit[] }) {
             </div>
             {tier.min === 0
               ? 'Starting tier'
-              : `Unlocks at ${tier.min} points`}
-            <div className="text-white/35 mt-0.5">{tier.unlock}</div>
+              : `Reaches at ${tier.min} points`}
           </div>
         </div>
       ))}

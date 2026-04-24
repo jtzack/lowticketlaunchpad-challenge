@@ -21,7 +21,6 @@ export default async function AdminTiersPage() {
     rank: i + 1,
     name: tiers[i]?.name ?? t.name,
     min: t.min,
-    unlock: t.unlock,
   }))
 
   return (
@@ -38,8 +37,7 @@ export default async function AdminTiersPage() {
           </h1>
           <p className="font-sans text-[14px] text-white/55 mt-2 max-w-[640px]">
             Customize the four tier names shown on the dashboard, leaderboard,
-            and in-session badges. Point thresholds and the rewards tied to
-            each tier stay the same.
+            and in-session badges. Point thresholds stay fixed.
           </p>
         </div>
 
