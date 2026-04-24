@@ -135,6 +135,8 @@ export async function updateSession(
   sessionId: number,
   title: string,
   description: string,
+  homeworkPrompt: string,
+  sessionUrl: string | null,
   dueAtIso: string | null
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
@@ -142,7 +144,13 @@ export async function updateSession(
     const admin = createAdminClient()
     const { error } = await admin
       .from('sessions')
-      .update({ title, description, due_at: dueAtIso })
+      .update({
+        title,
+        description,
+        homework_prompt: homeworkPrompt,
+        session_url: sessionUrl,
+        due_at: dueAtIso,
+      })
       .eq('id', sessionId)
     if (error) return { ok: false, error: error.message }
     // Sessions are displayed across the whole app; bust every cache that
