@@ -10,6 +10,7 @@ import {
   computeTotalPoints,
   getTier,
   getNextTier,
+  getTiersFromDb,
   type Submission,
 } from '@/lib/points'
 import { CelebrateModal } from './celebrate-modal'
@@ -54,8 +55,9 @@ export default async function DashboardPage({
     0
   )
   const streakBonus = Math.max(0, totalPoints - basePoints)
-  const tier = getTier(totalPoints)
-  const nextTier = getNextTier(totalPoints)
+  const tiers = await getTiersFromDb(supabase)
+  const tier = getTier(totalPoints, tiers)
+  const nextTier = getNextTier(totalPoints, tiers)
   const displayName: string =
     profile?.name || user.email?.split('@')[0] || 'Student'
 
@@ -161,6 +163,7 @@ export default async function DashboardPage({
           sessions={sessions}
           completedSet={completedSet}
           currentTierName={tier.name}
+          tierNames={tiers.map((t) => t.name)}
         />
 
         {/* Next-up CTA + stats, side by side so horizontal space isn't wasted */}
@@ -211,24 +214,25 @@ export default async function DashboardPage({
 }
 
 // Tier checkpoints sit at the dots where a perfect-run student reaches each
-// tier: Builder at session 2, Launcher at session 4, Master at session 6.
-// Starter is the starting state at session 1.
-const TIER_CHECKPOINTS: { name: string; dotIndex: number }[] = [
-  { name: 'Starter', dotIndex: 0 },
-  { name: 'Builder', dotIndex: 1 },
-  { name: 'Launcher', dotIndex: 3 },
-  { name: 'Master', dotIndex: 5 },
-]
+// tier: second tier at session 2, third at session 4, top at session 6. Tier
+// names come from DB-backed data so they update when the admin edits them.
+const TIER_DOT_INDEXES = [0, 1, 3, 5]
 
 function SessionProgressBar({
   sessions,
   completedSet,
   currentTierName,
+  tierNames,
 }: {
   sessions: { id: number; number: number }[]
   completedSet: Set<number>
   currentTierName: string
+  tierNames: string[]
 }) {
+  const checkpoints = TIER_DOT_INDEXES.map((dotIndex, i) => ({
+    name: tierNames[i] ?? '',
+    dotIndex,
+  }))
   const total = sessions.length
   if (total === 0) return null
   const completedCount = sessions.filter((s) => completedSet.has(s.id)).length
@@ -241,7 +245,7 @@ function SessionProgressBar({
     <section className="mb-10">
       {/* Tier labels */}
       <div className="relative h-5 mb-2">
-        {TIER_CHECKPOINTS.map((t) => {
+        {checkpoints.map((t) => {
           const left = (t.dotIndex / (total - 1)) * 100
           const isCurrent = t.name === currentTierName
           return (

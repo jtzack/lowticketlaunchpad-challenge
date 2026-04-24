@@ -192,3 +192,30 @@ export async function updateReward(
     return { ok: false, error: e instanceof Error ? e.message : 'Unknown error' }
   }
 }
+
+export async function updateTierNames(
+  updates: { rank: number; name: string }[]
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await requireAdmin()
+    const admin = createAdminClient()
+    for (const u of updates) {
+      const trimmed = u.name.trim()
+      if (!trimmed) return { ok: false, error: `Tier ${u.rank} name cannot be empty` }
+      if (trimmed.length > 40) return { ok: false, error: `Tier ${u.rank} name too long` }
+      const { error } = await admin
+        .from('tiers')
+        .update({ name: trimmed })
+        .eq('rank', u.rank)
+      if (error) return { ok: false, error: error.message }
+    }
+    // Tier names show up on the dashboard, leaderboard, celebrate modal,
+    // and anywhere TierBadge renders. Revalidate the pages that read them.
+    revalidatePath('/admin/tiers')
+    revalidatePath('/dashboard')
+    revalidatePath('/leaderboard')
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unknown error' }
+  }
+}

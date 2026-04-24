@@ -1,11 +1,12 @@
 import Link from 'next/link'
 
-type Tab = 'showcase' | 'sessions' | 'rewards'
+type Tab = 'showcase' | 'sessions' | 'rewards' | 'tiers'
 
 const TABS: { key: Tab; href: string; label: string }[] = [
   { key: 'showcase', href: '/admin',          label: 'Showcase' },
   { key: 'sessions', href: '/admin/sessions', label: 'Sessions' },
   { key: 'rewards',  href: '/admin/rewards',  label: 'Rewards' },
+  { key: 'tiers',    href: '/admin/tiers',    label: 'Tiers' },
 ]
 
 export function AdminHeader({

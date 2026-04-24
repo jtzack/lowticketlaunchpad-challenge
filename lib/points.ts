@@ -1,8 +1,10 @@
 // Points, streaks, and tier calculations
 // Computed at read-time from the submissions array — no separate column needed.
 
+import type { SupabaseClient } from '@supabase/supabase-js'
+
 export type Tier = {
-  name: 'Starter' | 'Builder' | 'Launcher' | 'Master'
+  name: string
   min: number
   max: number | null
   unlock: string
@@ -82,30 +84,58 @@ export function computeTotalPoints(submissions: Submission[]): number {
 /**
  * Get the current tier for a given points total.
  */
-export function getTier(points: number): Tier {
-  for (let i = TIERS.length - 1; i >= 0; i--) {
-    if (points >= TIERS[i].min) return TIERS[i]
+export function getTier(points: number, tiers: Tier[] = TIERS): Tier {
+  for (let i = tiers.length - 1; i >= 0; i--) {
+    if (points >= tiers[i].min) return tiers[i]
   }
-  return TIERS[0]
+  return tiers[0]
 }
 
 /**
  * Get the next tier (or null if already at the top).
  */
-export function getNextTier(points: number): Tier | null {
-  const current = getTier(points)
-  const idx = TIERS.findIndex((t) => t.name === current.name)
-  return TIERS[idx + 1] || null
+export function getNextTier(points: number, tiers: Tier[] = TIERS): Tier | null {
+  const current = getTier(points, tiers)
+  const idx = tiers.findIndex((t) => t.min === current.min)
+  return tiers[idx + 1] || null
 }
 
 /**
  * Progress percentage towards the next tier (0–100).
  */
-export function getProgressToNextTier(points: number): number {
-  const current = getTier(points)
-  const next = getNextTier(points)
+export function getProgressToNextTier(
+  points: number,
+  tiers: Tier[] = TIERS
+): number {
+  const current = getTier(points, tiers)
+  const next = getNextTier(points, tiers)
   if (!next) return 100
   const range = next.min - current.min
   const earned = points - current.min
   return Math.min(100, Math.round((earned / range) * 100))
+}
+
+// Admin-editable tier names live in the `tiers` table. Thresholds, colors,
+// and unlock copy stay hardcoded in TIERS — we just swap the display name.
+// Falls back silently to TIERS if the table is missing or empty.
+export async function getTiersFromDb(
+  supabase: SupabaseClient
+): Promise<Tier[]> {
+  try {
+    const { data } = await supabase
+      .from('tiers')
+      .select('rank, name')
+      .order('rank', { ascending: true })
+    if (!data || data.length === 0) return TIERS
+    const byRank = new Map<number, string>(
+      data.map((r) => [r.rank, r.name])
+    )
+    return TIERS.map((t, i) => {
+      const rank = i + 1
+      const name = byRank.get(rank)
+      return name ? { ...t, name } : t
+    })
+  } catch {
+    return TIERS
+  }
 }

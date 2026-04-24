@@ -79,6 +79,19 @@ create table if not exists public.submission_likes (
 create index if not exists submission_likes_submission_idx
   on public.submission_likes(submission_id);
 
+-- ─── Tiers (admin-editable names on fixed point thresholds) ───
+create table if not exists public.tiers (
+  rank int primary key,
+  name text not null
+);
+
+insert into public.tiers (rank, name) values
+  (1, 'Starter'),
+  (2, 'Builder'),
+  (3, 'Launcher'),
+  (4, 'Master')
+on conflict (rank) do nothing;
+
 create index if not exists reward_claims_user_idx on public.reward_claims(user_id);
 
 -- ─── Row Level Security ───
@@ -88,6 +101,7 @@ alter table public.submissions enable row level security;
 alter table public.rewards enable row level security;
 alter table public.reward_claims enable row level security;
 alter table public.submission_likes enable row level security;
+alter table public.tiers enable row level security;
 
 -- Profiles: anyone can read, only the owner can insert/update their own
 drop policy if exists "Profiles are viewable by everyone" on public.profiles;
@@ -159,6 +173,12 @@ drop policy if exists "Users can remove own likes" on public.submission_likes;
 create policy "Users can remove own likes"
   on public.submission_likes for delete
   using (auth.uid() = user_id);
+
+-- Tiers: read-only for everyone (admin writes go through service role)
+drop policy if exists "Tiers are viewable by everyone" on public.tiers;
+create policy "Tiers are viewable by everyone"
+  on public.tiers for select
+  using (true);
 
 -- ─── Auto-create profile on signup ───
 create or replace function public.handle_new_user()
