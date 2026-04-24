@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { isAdmin } from '@/lib/admin'
+import { SignOutButton } from './SignOutButton'
 
 type NavKey = 'dashboard' | 'showcase' | 'leaderboard' | 'rewards' | 'admin'
 
@@ -81,6 +82,7 @@ export async function BrandHeader({
               {initials}
             </div>
           )}
+          {isLoggedIn && <SignOutButton />}
         </div>
       </div>
     </header>

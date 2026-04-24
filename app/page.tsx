@@ -1,7 +1,18 @@
+import Link from 'next/link'
 import { BrandHeader } from '@/components/BrandHeader'
+import { createClient } from '@/lib/supabase/server'
 import { LoginForm } from './login-form'
 
-export default function HomePage() {
+export const dynamic = 'force-dynamic'
+
+export default async function HomePage() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const isSignedIn = Boolean(user)
+  const firstName = user?.email?.split('@')[0] ?? 'there'
+
   return (
     <div className="min-h-screen flex flex-col bg-black">
       <BrandHeader />
@@ -64,9 +75,30 @@ export default function HomePage() {
             </dl>
           </div>
 
-          {/* Right: sign-in card + single proof */}
+          {/* Right: sign-in card (or welcome-back for signed-in users) + single proof */}
           <div className="w-full max-w-md lg:max-w-none lg:w-auto mx-auto lg:mx-0">
-            <LoginForm />
+            {isSignedIn ? (
+              <div className="border border-yellow/40 bg-yellow/[0.04] rounded-[14px] p-7">
+                <p className="font-sans text-[11px] font-bold text-yellow uppercase tracking-[0.18em] mb-2">
+                  Welcome back
+                </p>
+                <p className="font-display text-[22px] text-white uppercase tracking-wide mb-4">
+                  Hey, {firstName}.
+                </p>
+                <p className="font-sans text-[13px] text-white/60 leading-relaxed mb-5">
+                  You&apos;re signed in. Jump back to your dashboard to pick
+                  up where you left off.
+                </p>
+                <Link
+                  href="/dashboard"
+                  className="inline-block w-full text-center bg-yellow text-black font-sans text-[14px] font-bold uppercase tracking-[0.08em] py-3.5 rounded-lg hover:bg-yellow/90 transition"
+                >
+                  Go to dashboard →
+                </Link>
+              </div>
+            ) : (
+              <LoginForm />
+            )}
 
             <div className="mt-5 rounded-xl border border-white/10 bg-blue/[0.04] p-5">
               <div className="flex items-center gap-3 mb-2">
