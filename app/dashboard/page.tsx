@@ -150,7 +150,7 @@ export default async function DashboardPage({
             </div>
             {streakBonus > 0 && (
               <div className="font-sans text-[11px] text-white/40 mt-1">
-                {basePoints} earned \u00b7 +{streakBonus} streak bonus
+                {basePoints} earned · +{streakBonus} streak bonus
               </div>
             )}
           </div>
