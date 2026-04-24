@@ -4,11 +4,17 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { computePoints } from '@/lib/scoring'
 
-type ProofInput = {
-  proofType: 'link' | 'text'
-  proofUrl: string | null
-  proofText: string | null
+// Two fields, no mode toggle: a link to the work and/or free-form notes.
+// proof_type is derived server-side from which of the two is filled.
+export type ProofInput = {
+  url: string | null
   notes: string | null
+}
+
+type SanitizedProof = {
+  url: string | null
+  notes: string | null
+  proofType: 'link' | 'text'
 }
 
 type Ok = { ok: true; pointsAwarded: number }
@@ -24,25 +30,45 @@ async function getUserOrFail() {
   return { supabase, user }
 }
 
-function sanitize(input: ProofInput): ProofInput {
+function sanitize(input: ProofInput): SanitizedProof | null {
+  const url = input.url ? input.url.trim() || null : null
+  const notes = input.notes ? input.notes.trim() || null : null
+  if (!url && !notes) return null
+  // A submission that has a URL is a "link" type, even if the student
+  // also left a note. No URL → the notes are the proof, stored as "text".
   return {
-    proofType: input.proofType === 'text' ? 'text' : 'link',
-    proofUrl:
-      input.proofType === 'link' && input.proofUrl
-        ? input.proofUrl.trim() || null
-        : null,
-    proofText:
-      input.proofType === 'text' && input.proofText
-        ? input.proofText.trim() || null
-        : null,
-    notes: input.notes ? input.notes.trim() || null : null,
+    url,
+    notes,
+    proofType: url ? 'link' : 'text',
+  }
+}
+
+// Persisted shape for the submissions row. Keeps the DB columns the admin
+// table + ProofCard already render (proof_url / proof_text / notes) so no
+// rendering changes are needed.
+function toRowColumns(s: SanitizedProof) {
+  if (s.proofType === 'link') {
+    return {
+      proof_type: 'link' as const,
+      proof_url: s.url,
+      proof_text: null,
+      notes: s.notes,
+    }
+  }
+  // text-only: store the student's notes as the proof body, leave notes null
+  // so ProofCard doesn't double-render it as both proof and commentary.
+  return {
+    proof_type: 'text' as const,
+    proof_url: null,
+    proof_text: s.notes,
+    notes: null,
   }
 }
 
 async function scoreAgainstSession(
   supabase: Awaited<ReturnType<typeof createClient>>,
   sessionId: number,
-  input: ProofInput,
+  s: SanitizedProof,
   submittedAt: string
 ): Promise<number> {
   const { data: session } = await supabase
@@ -51,9 +77,8 @@ async function scoreAgainstSession(
     .eq('id', sessionId)
     .maybeSingle()
   return computePoints({
-    proofType: input.proofType,
-    hasUrl: Boolean(input.proofUrl),
-    hasNotes: Boolean(input.notes),
+    hasUrl: Boolean(s.url),
+    hasNotes: Boolean(s.notes),
     submittedAt,
     dueAt: session?.due_at ?? null,
   })
@@ -64,12 +89,12 @@ export async function submitProof(
   raw: ProofInput
 ): Promise<Result> {
   try {
-    const input = sanitize(raw)
-    if (input.proofType === 'link' && !input.proofUrl) {
-      return { ok: false, error: 'Link submissions need a URL' }
-    }
-    if (input.proofType === 'text' && !input.proofText) {
-      return { ok: false, error: 'Text submissions need a proof body' }
+    const s = sanitize(raw)
+    if (!s) {
+      return {
+        ok: false,
+        error: 'Add a link or notes before submitting.',
+      }
     }
 
     const { supabase, user } = await getUserOrFail()
@@ -104,17 +129,14 @@ export async function submitProof(
     const pointsAwarded = await scoreAgainstSession(
       supabase,
       sessionId,
-      input,
+      s,
       submittedAt
     )
 
     const { error } = await supabase.from('submissions').insert({
       user_id: user.id,
       session_id: sessionId,
-      proof_type: input.proofType,
-      proof_url: input.proofUrl,
-      proof_text: input.proofText,
-      notes: input.notes,
+      ...toRowColumns(s),
       points_awarded: pointsAwarded,
       is_public: true,
       submitted_at: submittedAt,
@@ -136,12 +158,12 @@ export async function updateProof(
   raw: ProofInput
 ): Promise<Result> {
   try {
-    const input = sanitize(raw)
-    if (input.proofType === 'link' && !input.proofUrl) {
-      return { ok: false, error: 'Link submissions need a URL' }
-    }
-    if (input.proofType === 'text' && !input.proofText) {
-      return { ok: false, error: 'Text submissions need a proof body' }
+    const s = sanitize(raw)
+    if (!s) {
+      return {
+        ok: false,
+        error: 'Add a link or notes before saving.',
+      }
     }
 
     const { supabase } = await getUserOrFail()
@@ -160,17 +182,14 @@ export async function updateProof(
     const pointsAwarded = await scoreAgainstSession(
       supabase,
       existing.session_id,
-      input,
+      s,
       existing.submitted_at
     )
 
     const { error } = await supabase
       .from('submissions')
       .update({
-        proof_type: input.proofType,
-        proof_url: input.proofUrl,
-        proof_text: input.proofText,
-        notes: input.notes,
+        ...toRowColumns(s),
         points_awarded: pointsAwarded,
       })
       .eq('id', submissionId)
