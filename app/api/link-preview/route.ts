@@ -8,6 +8,15 @@ const FETCH_TIMEOUT_MS = 5_000
 const MAX_HTML_BYTES = 200_000
 const CACHE_SECONDS = 60 * 60
 
+// Hosts that publish a low-quality og:image we'd rather hide than render.
+const GOOGLE_DOC_HOSTS = new Set([
+  'docs.google.com',
+  'sheets.google.com',
+  'slides.google.com',
+  'forms.google.com',
+  'drive.google.com',
+])
+
 // Rough SSRF guard: block loopback, link-local, and RFC1918 private ranges
 // so a student-pasted URL can't be used to poke at internal services. This
 // is a hostname-string check; an attacker with DNS control could still
@@ -158,6 +167,13 @@ export async function GET(req: NextRequest) {
       } catch {
         image = null
       }
+    }
+    // Google publishes a deliberately low-res thumbnail of the upper-left
+    // corner of Docs/Sheets/Slides as their og:image, which renders as a
+    // mostly-blank frame in our preview cards. Drop it so these URLs show
+    // a clean text-only card. Title + description still come through fine.
+    if (GOOGLE_DOC_HOSTS.has(parsed.hostname)) {
+      image = null
     }
     const siteName = extractMeta(head, ['og:site_name'])
 
