@@ -181,14 +181,17 @@ create policy "Tiers are viewable by everyone"
   using (true);
 
 -- ─── Auto-create profile on signup ───
+-- Pre-fills `name` with the email prefix so the cohort never sees a brand-
+-- new student show up as "Anonymous" before they edit their display name
+-- on the dashboard.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
 begin
-  insert into public.profiles (id, email)
-  values (new.id, new.email)
+  insert into public.profiles (id, email, name)
+  values (new.id, new.email, split_part(new.email, '@', 1))
   on conflict (id) do nothing;
   return new;
 end;

@@ -4,6 +4,7 @@ import { BrandHeader } from '@/components/BrandHeader'
 import { ProofCard } from '@/components/ProofCard'
 import type { Submission } from '@/lib/points'
 import { getSessionsFromDb } from '@/lib/sessions'
+import { displayNameOf } from '@/lib/profile'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,14 +70,14 @@ export default async function ShowcasePage({
   const userIds = Array.from(
     new Set(rawSubmissions.map((s) => s.user_id).filter(Boolean))
   )
-  const nameByUserId = new Map<string, string | null>()
+  const nameByUserId = new Map<string, string>()
   if (userIds.length > 0) {
     const { data: profilesData } = await supabase
       .from('profiles')
-      .select('id, name')
+      .select('id, name, email')
       .in('id', userIds)
     for (const p of profilesData || []) {
-      nameByUserId.set(p.id, p.name ?? null)
+      nameByUserId.set(p.id, displayNameOf(p.name, p.email))
     }
   }
 

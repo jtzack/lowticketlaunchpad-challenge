@@ -7,6 +7,7 @@ import {
   getTiersFromDb,
   type Submission,
 } from '@/lib/points'
+import { displayNameOf } from '@/lib/profile'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,14 +35,14 @@ export default async function LeaderboardPage() {
   const userIds = Array.from(
     new Set(rawSubs.map((s) => s.user_id).filter(Boolean))
   )
-  const nameByUserId = new Map<string, string | null>()
+  const nameByUserId = new Map<string, string>()
   if (userIds.length > 0) {
     const { data: profilesData } = await supabase
       .from('profiles')
-      .select('id, name')
+      .select('id, name, email')
       .in('id', userIds)
     for (const p of profilesData ?? []) {
-      nameByUserId.set(p.id, p.name ?? null)
+      nameByUserId.set(p.id, displayNameOf(p.name, p.email))
     }
   }
 
