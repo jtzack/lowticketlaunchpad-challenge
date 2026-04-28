@@ -134,7 +134,10 @@ export default async function DashboardPage({
             <p className="font-sans text-[11px] font-bold text-blue uppercase tracking-[0.2em] mb-2">
               Welcome Back
             </p>
-            <InlineNameEdit initialName={displayName} />
+            <InlineNameEdit
+              initialName={displayName}
+              needsSetup={!profile?.name}
+            />
             <p className="font-sans text-[14px] text-white/65 leading-[1.5]">
               {nextTier
                 ? `You're a ${tier.name}. ${

@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { SESSIONS } from '@/lib/sessions'
+import { displayNameOf } from '@/lib/profile'
 import { FeatureToggle } from './feature-toggle'
 import {
   deleteSubmission,
@@ -291,8 +292,9 @@ export function SubmissionsTable({
           </div>
         ) : (
           visibleRows.map((sub) => {
-            const initials = (sub.student_name || sub.student_email || '—')
-              .split(/[\s@]+/)
+            const displayName = displayNameOf(sub.student_name, sub.student_email)
+            const initials = displayName
+              .split(/[\s@.]+/)
               .map((s: string) => s[0])
               .join('')
               .slice(0, 2)
@@ -320,7 +322,7 @@ export function SubmissionsTable({
                     checked={isSelected}
                     onChange={() => toggleOne(sub.id)}
                     className="w-4 h-4 accent-yellow cursor-pointer"
-                    aria-label={`Select submission by ${sub.student_name || 'student'}`}
+                    aria-label={`Select submission by ${displayName}`}
                   />
                 </label>
                 <span className="font-mono text-[11px] text-yellow tracking-[0.12em]">
@@ -332,7 +334,7 @@ export function SubmissionsTable({
                   </div>
                   <div className="min-w-0">
                     <div className="font-sans text-[13px] text-white truncate flex items-center gap-2">
-                      {sub.student_name || 'Anonymous'}
+                      {displayName}
                       {hidden && (
                         <span className="font-sans text-[9px] text-white/50 uppercase tracking-[0.14em] border border-white/20 rounded px-1.5 py-0.5">
                           Hidden

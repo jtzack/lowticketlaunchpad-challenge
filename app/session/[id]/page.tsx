@@ -6,6 +6,7 @@ import { ProofCard } from '@/components/ProofCard'
 import { SubmitForm } from './submit-form'
 import { MySubmissionCard } from './my-submission-card'
 import { computeOpensAt, getSessionsFromDb } from '@/lib/sessions'
+import { displayNameOf } from '@/lib/profile'
 import type { Submission } from '@/lib/points'
 
 export const dynamic = 'force-dynamic'
@@ -60,14 +61,14 @@ export default async function SessionPage({
   const peerUserIds = Array.from(
     new Set((peerSubmissions ?? []).map((s) => s.user_id).filter(Boolean))
   )
-  const peerNameByUserId = new Map<string, string | null>()
+  const peerNameByUserId = new Map<string, string>()
   if (peerUserIds.length > 0) {
     const { data: profilesData } = await supabase
       .from('profiles')
-      .select('id, name')
+      .select('id, name, email')
       .in('id', peerUserIds)
     for (const p of profilesData || []) {
-      peerNameByUserId.set(p.id, p.name ?? null)
+      peerNameByUserId.set(p.id, displayNameOf(p.name, p.email))
     }
   }
 

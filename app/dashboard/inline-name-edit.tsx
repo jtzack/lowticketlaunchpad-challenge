@@ -4,7 +4,13 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateProfileName } from './actions'
 
-export function InlineNameEdit({ initialName }: { initialName: string }) {
+export function InlineNameEdit({
+  initialName,
+  needsSetup = false,
+}: {
+  initialName: string
+  needsSetup?: boolean
+}) {
   const router = useRouter()
   const [name, setName] = useState(initialName)
   const [editing, setEditing] = useState(false)
@@ -86,20 +92,35 @@ export function InlineNameEdit({ initialName }: { initialName: string }) {
     )
   }
 
+  // When the student hasn't set a real name yet, the heading still falls
+  // back to their email prefix — but we surface a pulsing "Set name" pill
+  // so they actually notice the editor and put a friendlier name in.
   return (
-    <button
-      type="button"
-      onClick={startEdit}
-      title="Click to edit your name"
-      className={`${headingCls} text-white text-left group inline-flex items-baseline gap-2 hover:text-yellow transition cursor-text`}
-    >
-      <span>{name}</span>
-      <span
-        aria-hidden
-        className="font-sans text-[13px] font-bold tracking-[0.1em] uppercase text-white/30 opacity-0 group-hover:opacity-100 transition"
+    <div>
+      <button
+        type="button"
+        onClick={startEdit}
+        title="Click to edit your name"
+        className={`${headingCls} text-white text-left group inline-flex items-baseline gap-2 hover:text-yellow transition cursor-text`}
       >
-        Edit
-      </span>
-    </button>
+        <span>{name}</span>
+        <span
+          aria-hidden
+          className={
+            needsSetup
+              ? 'font-sans text-[12px] font-bold tracking-[0.12em] uppercase px-2 py-1 rounded-full bg-yellow/15 border border-yellow/50 text-yellow animate-pulse'
+              : 'font-sans text-[13px] font-bold tracking-[0.1em] uppercase text-white/30 opacity-0 group-hover:opacity-100 transition'
+          }
+        >
+          {needsSetup ? 'Set name' : 'Edit'}
+        </span>
+      </button>
+      {needsSetup && (
+        <p className="font-sans text-[12px] text-white/55 mt-2 max-w-md">
+          Heads up — that&apos;s your email prefix. Click your name above to
+          set the one you want the cohort to see.
+        </p>
+      )}
+    </div>
   )
 }
