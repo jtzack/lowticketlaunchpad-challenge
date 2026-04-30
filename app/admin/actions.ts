@@ -219,3 +219,33 @@ export async function updateTierNames(
     return { ok: false, error: e instanceof Error ? e.message : 'Unknown error' }
   }
 }
+
+// Returns a one-shot magic-link URL for the given email without sending an
+// email. Lets an admin DM/text the link directly when Supabase's built-in
+// SMTP is rate-limited or a student says they didn't get the email.
+//
+// SECURITY NOTE: anyone who has the returned link can sign in as that
+// user. requireAdmin() gates this; treat the link itself as a credential.
+export async function generateSignInLink(
+  email: string
+): Promise<{ ok: true; link: string } | { ok: false; error: string }> {
+  try {
+    await requireAdmin()
+    const trimmed = email.trim().toLowerCase()
+    if (!trimmed) return { ok: false, error: 'Email required' }
+
+    const admin = createAdminClient()
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+    const { data, error } = await admin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: trimmed,
+      options: siteUrl ? { redirectTo: `${siteUrl}/auth/callback` } : undefined,
+    })
+    if (error) return { ok: false, error: error.message }
+    const link = data?.properties?.action_link
+    if (!link) return { ok: false, error: 'No link returned by Supabase' }
+    return { ok: true, link }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unknown error' }
+  }
+}
